@@ -12,10 +12,11 @@ volumes:
   zookeeper_data:
 
 services:
+  # ==================== BASES DE DATOS ====================
   postgres-auth:
     image: postgres:16-alpine
     container_name: university-system-postgres-auth
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
       POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -28,15 +29,15 @@ services:
       - university-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUTH_DB_NAME}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
 
   postgres-audit:
     image: postgres:16-alpine
     container_name: university-system-postgres-audit
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
       POSTGRES_DB: ${AUDIT_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -49,15 +50,15 @@ services:
       - university-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUDIT_DB_NAME}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
 
   postgres-matriculas:
     image: postgres:16-alpine
     container_name: university-system-postgres-matriculas
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
       POSTGRES_DB: ${MATRICULAS_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -70,96 +71,112 @@ services:
       - university-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${MATRICULAS_DB_NAME}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
 
+  # ==================== MENSAJERÍA ====================
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.9.1
     container_name: university-system-zookeeper
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_PORT}
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "${ZOOKEEPER_PORT}:2181"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
     networks:
       - university-network
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.9.1
     container_name: university-system-kafka
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       zookeeper:
         condition: service_healthy
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Configuración básica
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
+
+      # Listeners
+      KAFKA_LISTENERS: ${KAFKA_LISTENERS}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
+
+      # Replicación
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+
+      # Configuración adicional
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT}:9092"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - university-network
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       start_period: 60s
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: university-system-rabbitmq
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - university-network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
+  # ==================== DISCOVERY & ROUTING ====================
   eureka-server:
     build:
       context: .
       dockerfile: Backend/eureka-server/Dockerfile
     image: university-system/eureka-server:latest
     container_name: university-system-eureka-server
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     environment:
-      - EUREKA_PORT=${EUREKA_PORT}
+      - SERVER_PORT=${EUREKA_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
     ports:
       - "${EUREKA_PORT}:8761"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8761/actuator/health || exit 1" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
 
   api-gateway:
     build:
@@ -167,31 +184,36 @@ services:
       dockerfile: Backend/api-gateway/Dockerfile
     image: university-system/api-gateway:latest
     container_name: university-system-api-gateway
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       eureka-server:
         condition: service_healthy
     environment:
-      - GATEWAY_PORT=${GATEWAY_PORT}
-      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=${GATEWAY_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_WEB=${LOGGING_LEVEL_WEB}
     ports:
       - "${GATEWAY_PORT}:8080"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8085/actuator/health || exit 1" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
 
+  # ==================== MICROSERVICIOS ====================
   auth-service:
     build:
       context: .
       dockerfile: Backend/auth-service/Dockerfile
     image: university-system/auth-service:latest
     container_name: university-system-auth-service
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -202,23 +224,47 @@ services:
       eureka-server:
         condition: service_healthy
     environment:
-      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
-      - AUTH_DB_URL=jdbc:postgresql://postgres-auth:5432/${AUTH_DB_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - RABBITMQ_HOST=rabbitmq
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      # Servidor
+      - SERVER_PORT=${AUTH_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+
+      # Base de datos
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/${AUTH_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+
+      # Eureka
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+
+      # RabbitMQ
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_USER_REGISTERED=${KAFKA_USER_REGISTERED_TOPIC}
+
+      # JWT
       - JWT_SECRET=${JWT_SECRET}
-      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+
+      # Logging
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
     ports:
       - "${AUTH_SERVICE_PORT}:8082"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8761/actuator/health || exit 1" ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       start_period: 60s
 
   email-service:
@@ -227,25 +273,47 @@ services:
       dockerfile: Backend/email-service/Dockerfile
     image: university-system/email-service:latest
     container_name: university-system-email-service
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       rabbitmq:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
     environment:
-      - EMAIL_SERVICE_PORT=${EMAIL_SERVICE_PORT}
-      - RABBITMQ_HOST=rabbitmq
-      - EUREKA_URL=http://eureka-server:8761/eureka/
+      # Servidor
+      - SERVER_PORT=${EMAIL_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+
+      # Eureka
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+
+      # RabbitMQ
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_QUEUE_EMAIL=${RABBITMQ_EMAIL_QUEUE}
+
+      # SMTP
+      - SPRING_MAIL_HOST=${SMTP_HOST}
+      - SPRING_MAIL_PORT=${SMTP_PORT}
+      - SPRING_MAIL_USERNAME=${SMTP_USERNAME}
+      - SPRING_MAIL_PASSWORD=${SMTP_PASSWORD}
+      - EMAIL_SIMULATION_MODE=${EMAIL_SIMULATION_MODE}
+
+      # Logging
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_RABBITMQ=${LOGGING_LEVEL_RABBITMQ}
     ports:
       - "${EMAIL_SERVICE_PORT}:8083"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8761/actuator/health || exit 1" ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       start_period: 60s
 
   audit-service:
@@ -254,7 +322,7 @@ services:
       dockerfile: Backend/audit-service/Dockerfile
     image: university-system/audit-service:latest
     container_name: university-system-audit-service
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       postgres-audit:
         condition: service_healthy
@@ -263,21 +331,39 @@ services:
       eureka-server:
         condition: service_healthy
     environment:
-      - AUDIT_SERVICE_PORT=${AUDIT_SERVICE_PORT}
-      - AUDIT_DB_URL=jdbc:postgresql://postgres-audit:5432/${AUDIT_DB_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - EUREKA_URL=http://eureka-server:8761/eureka/
+      # Servidor
+      - SERVER_PORT=${AUDIT_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+
+      # Base de datos
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-audit:5432/${AUDIT_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+
+      # Eureka
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_AUDIT=${KAFKA_AUDIT_TOPIC}
+      - KAFKA_CONSUMER_GROUP=${KAFKA_AUDIT_CONSUMER_GROUP}
+
+      # Logging
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
+      - LOGGING_LEVEL_KAFKA=${LOGGING_LEVEL_KAFKA}
     ports:
       - "${AUDIT_SERVICE_PORT}:8084"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8761/actuator/health || exit 1" ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       start_period: 60s
 
   matriculas-service:
@@ -286,7 +372,7 @@ services:
       dockerfile: Backend/matriculas-service/Dockerfile
     image: university-system/matriculas-service:latest
     container_name: university-system-matriculas-service
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       postgres-matriculas:
         condition: service_healthy
@@ -295,34 +381,54 @@ services:
       eureka-server:
         condition: service_healthy
     environment:
-      - MATRICULAS_SERVICE_PORT=${MATRICULAS_SERVICE_PORT}
-      - MATRICULAS_DB_URL=jdbc:postgresql://postgres-matriculas:5432/${MATRICULAS_DB_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - EUREKA_URL=http://eureka-server:8761/eureka/
+      # Servidor
+      - SERVER_PORT=${MATRICULAS_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+
+      # Base de datos
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-matriculas:5432/${MATRICULAS_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+
+      # Eureka
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_FACULTY_CREATED=${KAFKA_FACULTY_CREATED_TOPIC}
+
+      # Logging
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
+      - LOGGING_LEVEL_SQL=${LOGGING_LEVEL_SQL}
     ports:
       - "${MATRICULAS_SERVICE_PORT}:8085"
     networks:
       - university-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "sh", "-c", "wget --spider --quiet http://localhost:8761/actuator/health || exit 1" ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       start_period: 60s
 
+  # ==================== FRONTEND ====================
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
     image: university-system/frontend:latest
     container_name: university-system-frontend
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     depends_on:
       api-gateway:
         condition: service_healthy
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT}:80"
     networks:
       - university-network
