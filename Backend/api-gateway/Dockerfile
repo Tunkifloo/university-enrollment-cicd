@@ -5,13 +5,13 @@ RUN mvn install:install-file -Dfile=pom.xml -DpomFile=pom.xml -DgroupId=com.univ
 COPY Backend/common-lib/pom.xml ./Backend/common-lib/pom.xml
 COPY Backend/common-lib/src ./Backend/common-lib/src
 RUN mvn clean install -f Backend/common-lib/pom.xml -DskipTests
-COPY Backend/eureka-server/pom.xml ./Backend/eureka-server/pom.xml
-RUN mvn dependency:go-offline -f Backend/eureka-server/pom.xml || true
-COPY Backend/eureka-server/src ./Backend/eureka-server/src
-RUN mvn clean package -DskipTests -f Backend/eureka-server/pom.xml
+COPY Backend/api-gateway/pom.xml ./Backend/api-gateway/pom.xml
+RUN mvn dependency:go-offline -f Backend/api-gateway/pom.xml || true
+COPY Backend/api-gateway/src ./Backend/api-gateway/src
+RUN mvn clean package -DskipTests -f Backend/api-gateway/pom.xml
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /build/Backend/eureka-server/target/*.jar app.jar
-EXPOSE 8761
+COPY --from=build /build/Backend/api-gateway/target/*.jar app.jar
+EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

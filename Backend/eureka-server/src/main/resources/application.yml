@@ -1,41 +1,45 @@
+server:
+  port: ${EUREKA_PORT:8761}
+
 spring:
   application:
     name: eureka-server
+
   cloud:
     compatibility-verifier:
       enabled: false
 
-server:
-  port: 8761
-
+# CONFIGURACIÓN DE EUREKA SERVER
 eureka:
   instance:
-    hostname: localhost
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    prefer-ip-address: false
+
   client:
-    register-with-eureka: false
-    fetch-registry: false
+    register-with-eureka: ${EUREKA_CLIENT_REGISTER_WITH_EUREKA:false}
+    fetch-registry: ${EUREKA_CLIENT_FETCH_REGISTRY:false}
     service-url:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
-  server:
-    enable-self-preservation: false
-    wait-time-in-ms-when-sync-empty: 0
 
+  server:
+    wait-time-in-ms-when-sync-empty: ${EUREKA_SERVER_WAIT_TIME_ON_SHUTDOWN:0}
+    eviction-interval-timer-in-ms: ${EUREKA_SERVER_EVICTION_INTERVAL_TIMER:5000}
+    enable-self-preservation: false
+    response-cache-update-interval-ms: 5000
+
+# ACTUATOR
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
 
----
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-eureka:
-  instance:
-    hostname: eureka-server
-    prefer-ip-address: true
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+# LOGGING
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO

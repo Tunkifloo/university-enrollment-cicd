@@ -1,16 +1,17 @@
 FROM maven:3.9.5-eclipse-temurin-17 AS build
-WORKDIR /app
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
-COPY src src
-RUN ./mvnw package -DskipTests
+WORKDIR /build
+COPY pom.xml ./pom.xml
+RUN mvn install:install-file -Dfile=pom.xml -DpomFile=pom.xml -DgroupId=com.university -DartifactId=sistema-matriculas-parent -Dversion=1.0.0 -Dpackaging=pom
+COPY Backend/common-lib/pom.xml ./Backend/common-lib/pom.xml
+COPY Backend/common-lib/src ./Backend/common-lib/src
+RUN mvn clean install -f Backend/common-lib/pom.xml -DskipTests
+COPY Backend/matriculas-service/pom.xml ./Backend/matriculas-service/pom.xml
+RUN mvn dependency:go-offline -f Backend/matriculas-service/pom.xml || true
+COPY Backend/matriculas-service/src ./Backend/matriculas-service/src
+RUN mvn clean package -DskipTests -f Backend/matriculas-service/pom.xml
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-RUN apk add --no-cache curl
-COPY --from=build /app/target/*.jar app.jar
-COPY .env .env
-EXPOSE 8080
+COPY --from=build /build/Backend/matriculas-service/target/*.jar app.jar
+EXPOSE 8085
 ENTRYPOINT ["java", "-jar", "app.jar"]

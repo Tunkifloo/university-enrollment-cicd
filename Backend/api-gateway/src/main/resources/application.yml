@@ -1,83 +1,91 @@
 server:
-  port: 8080
+  port: ${GATEWAY_PORT:8080}
 
 spring:
   application:
-    name: api-gateway
+    name: ${GATEWAY_SERVICE_NAME:api-gateway}
+
   cloud:
     compatibility-verifier:
       enabled: false
+
     gateway:
+      # Configuración de CORS global
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+            allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}
+            allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+            allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+            max-age: ${CORS_MAX_AGE:3600}
+
+      # Rutas dinámicas con descubrimiento de servicios
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
+
+      # Rutas específicas
       routes:
-        # RUTA PARA AUTH SERVICE (sin autenticación)
-        - id: auth-service-register
+        # Auth Service
+        - id: auth-service
           uri: lb://auth-service
           predicates:
-            - Path=/api/auth/register
+            - Path=/api/v1/auth/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
 
-        - id: auth-service-login
-          uri: lb://auth-service
-          predicates:
-            - Path=/api/auth/login
-          filters:
-            - StripPrefix=1
-
-        # RUTA PARA MATRICULAS SERVICE (con auth)
+        # Matriculas Service
         - id: matriculas-service
           uri: lb://matriculas-service
           predicates:
-            - Path=/api/v1/**
+            - Path=/api/v1/matriculas/**
           filters:
-            - AuthenticationFilter
+            - StripPrefix=2
 
-        # ACTUATOR (sin autenticación)
-        - id: eureka-actuator
-          uri: lb://eureka-server
+        # Audit Service
+        - id: audit-service
+          uri: lb://audit-service
           predicates:
-            - Path=/eureka/actuator/**
+            - Path=/api/v1/audit/**
+          filters:
+            - StripPrefix=2
+
+        # Email Service (solo para admin/health)
+        - id: email-service
+          uri: lb://email-service
+          predicates:
+            - Path=/api/v1/email/**
+          filters:
+            - StripPrefix=2
 
 # EUREKA CLIENT
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${GATEWAY_EUREKA_URL:http://localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
 
-# JWT CONFIGURATION
-jwt:
-  secret: mi-clave-secreta-super-segura-de-256-bits-para-produccion-cambiar-esto
-
 # ACTUATOR
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,gateway}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
+    gateway:
+      enabled: true
 
 # LOGGING
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    com.university.gateway: DEBUG
-
----
-# PERFIL DOCKER
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.university.gateway: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.cloud.gateway: ${LOGGING_LEVEL_WEB:INFO}

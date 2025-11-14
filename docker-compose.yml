@@ -1,55 +1,328 @@
+networks:
+  university-network:
+    driver: bridge
+    name: university-system-network
+
+volumes:
+  postgres_auth_data:
+  postgres_audit_data:
+  postgres_matriculas_data:
+  rabbitmq_data:
+  kafka_data:
+  zookeeper_data:
+
 services:
-  postgres:
+  postgres-auth:
     image: postgres:16-alpine
-    container_name: matriculas-db
+    container_name: university-system-postgres-auth
     restart: unless-stopped
-    env_file: .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${DB_PORT}:5432"
+      - "${POSTGRES_AUTH_PORT}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - university-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUTH_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  backend:
-    build: Backend/matriculas-service
-    container_name: matriculas-backend
+  postgres-audit:
+    image: postgres:16-alpine
+    container_name: university-system-postgres-audit
     restart: unless-stopped
-    env_file: .env
+    environment:
+      POSTGRES_DB: ${AUDIT_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${SERVER_PORT}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - "${POSTGRES_AUDIT_PORT}:5432"
+    volumes:
+      - postgres_audit_data:/var/lib/postgresql/data
     networks:
-      - app-network
+      - university-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUDIT_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-matriculas:
+    image: postgres:16-alpine
+    container_name: university-system-postgres-matriculas
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MATRICULAS_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_MATRICULAS_PORT}:5432"
+    volumes:
+      - postgres_matriculas_data:/var/lib/postgresql/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${MATRICULAS_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: university-system-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: university-system-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: university-system-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: Backend/eureka-server/Dockerfile
+    image: university-system/eureka-server:latest
+    container_name: university-system-eureka-server
+    restart: unless-stopped
+    environment:
+      - EUREKA_PORT=${EUREKA_PORT}
+    ports:
+      - "${EUREKA_PORT}:8761"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Backend/api-gateway/Dockerfile
+    image: university-system/api-gateway:latest
+    container_name: university-system-api-gateway
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - GATEWAY_PORT=${GATEWAY_PORT}
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+    ports:
+      - "${GATEWAY_PORT}:8080"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Backend/auth-service/Dockerfile
+    image: university-system/auth-service:latest
+    container_name: university-system-auth-service
+    restart: unless-stopped
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
+      - AUTH_DB_URL=jdbc:postgresql://postgres-auth:5432/${AUTH_DB_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - RABBITMQ_HOST=rabbitmq
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - JWT_SECRET=${JWT_SECRET}
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+    ports:
+      - "${AUTH_SERVICE_PORT}:8082"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  email-service:
+    build:
+      context: .
+      dockerfile: Backend/email-service/Dockerfile
+    image: university-system/email-service:latest
+    container_name: university-system-email-service
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - EMAIL_SERVICE_PORT=${EMAIL_SERVICE_PORT}
+      - RABBITMQ_HOST=rabbitmq
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+    ports:
+      - "${EMAIL_SERVICE_PORT}:8083"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: Backend/audit-service/Dockerfile
+    image: university-system/audit-service:latest
+    container_name: university-system-audit-service
+    restart: unless-stopped
+    depends_on:
+      postgres-audit:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - AUDIT_SERVICE_PORT=${AUDIT_SERVICE_PORT}
+      - AUDIT_DB_URL=jdbc:postgresql://postgres-audit:5432/${AUDIT_DB_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+    ports:
+      - "${AUDIT_SERVICE_PORT}:8084"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  matriculas-service:
+    build:
+      context: .
+      dockerfile: Backend/matriculas-service/Dockerfile
+    image: university-system/matriculas-service:latest
+    container_name: university-system-matriculas-service
+    restart: unless-stopped
+    depends_on:
+      postgres-matriculas:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - MATRICULAS_SERVICE_PORT=${MATRICULAS_SERVICE_PORT}
+      - MATRICULAS_DB_URL=jdbc:postgresql://postgres-matriculas:5432/${MATRICULAS_DB_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+    ports:
+      - "${MATRICULAS_SERVICE_PORT}:8085"
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:
       context: ./Frontend
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-    container_name: matriculas-frontend
+      dockerfile: Dockerfile
+    image: university-system/frontend:latest
+    container_name: university-system-frontend
     restart: unless-stopped
-    ports:
-      - "${VITE_DEV_PORT}:80"
     depends_on:
-      - backend
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "5173:80"
     networks:
-      - app-network
-
-volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge
+      - university-network

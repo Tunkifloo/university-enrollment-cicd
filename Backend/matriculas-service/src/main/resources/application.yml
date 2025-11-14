@@ -1,9 +1,9 @@
 server:
-  port: ${AUTH_SERVICE_PORT:8082}
+  port: ${MATRICULAS_SERVICE_PORT:8085}
 
 spring:
   application:
-    name: ${AUTH_SERVICE_NAME:auth-service}
+    name: ${MATRICULAS_SERVICE_NAME:matriculas-service}
 
   cloud:
     compatibility-verifier:
@@ -11,7 +11,7 @@ spring:
 
   # CONFIGURACIÓN DE BASE DE DATOS
   datasource:
-    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5432/auth_db}
+    url: ${MATRICULAS_DB_URL:jdbc:postgresql://localhost:5434/matriculas_db}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
@@ -33,21 +33,13 @@ spring:
           lob:
             non_contextual_creation: true
 
-  # CONFIGURACIÓN DE RABBITMQ
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_DEFAULT_USER:admin}
-    password: ${RABBITMQ_DEFAULT_PASS:admin}
-    virtual-host: ${RABBITMQ_DEFAULT_VHOST:/}
-    listener:
-      simple:
-        retry:
-          enabled: true
-          initial-interval: 3000
-          max-attempts: 3
+  # FLYWAY (si lo usas)
+  flyway:
+    enabled: false
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
-  # CONFIGURACIÓN DE KAFKA
+  # CONFIGURACIÓN DE KAFKA (para publicar eventos)
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -65,26 +57,11 @@ eureka:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
 
-# JWT CONFIGURATION
-jwt:
-  secret: ${JWT_SECRET:mi-clave-secreta-super-segura-de-256-bits-para-produccion}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
-
-# RABBITMQ TOPICS
-rabbitmq:
-  queue:
-    email: ${RABBITMQ_EMAIL_QUEUE:email.queue}
-  exchange:
-    email: ${RABBITMQ_EMAIL_EXCHANGE:email.exchange}
-  routing-key:
-    email: ${RABBITMQ_EMAIL_ROUTING_KEY:email.routing.key}
-
 # KAFKA TOPICS
 kafka:
   topics:
+    faculty-created: ${KAFKA_FACULTY_CREATED_TOPIC:faculty.created}
     audit: ${KAFKA_AUDIT_TOPIC:audit.events}
-    user-registered: ${KAFKA_USER_REGISTERED_TOPIC:user.registered}
 
 # ACTUATOR
 management:
@@ -100,6 +77,7 @@ management:
 logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
-    com.university.auth: ${LOGGING_LEVEL_APP:DEBUG}
-    org.springframework.security: ${LOGGING_LEVEL_WEB:INFO}
-    org.springframework.amqp: ${LOGGING_LEVEL_RABBITMQ:INFO}
+    com.springback.apimatriculas: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.web: ${LOGGING_LEVEL_WEB:INFO}
+    org.hibernate.SQL: ${LOGGING_LEVEL_SQL:DEBUG}
+    org.springframework.kafka: ${LOGGING_LEVEL_KAFKA:INFO}

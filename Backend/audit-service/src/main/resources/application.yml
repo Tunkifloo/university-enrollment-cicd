@@ -1,9 +1,9 @@
 server:
-  port: 8084
+  port: ${AUDIT_SERVICE_PORT:8084}
 
 spring:
   application:
-    name: audit-service
+    name: ${AUDIT_SERVICE_NAME:audit-service}
 
   cloud:
     compatibility-verifier:
@@ -11,28 +11,33 @@ spring:
 
   # CONFIGURACIÓN DE BASE DE DATOS
   datasource:
-    url: jdbc:postgresql://localhost:5434/audit_db
-    username: postgres
-    password: admin
+    url: ${AUDIT_DB_URL:jdbc:postgresql://localhost:5433/audit_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        format_sql: true
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:true}
         jdbc:
           lob:
             non_contextual_creation: true
 
   # CONFIGURACIÓN DE KAFKA
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: audit-service-group
+      group-id: ${KAFKA_AUDIT_CONSUMER_GROUP:audit-service-group}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -44,7 +49,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -54,41 +59,24 @@ eureka:
 # KAFKA TOPICS
 kafka:
   topics:
-    audit: audit.events
-    user-registered: user.registered
-    faculty-created: faculty.created
+    audit: ${KAFKA_AUDIT_TOPIC:audit.events}
+    user-registered: ${KAFKA_USER_REGISTERED_TOPIC:user.registered}
+    faculty-created: ${KAFKA_FACULTY_CREATED_TOPIC:faculty.created}
 
 # ACTUATOR
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics}
   endpoint:
     health:
-      show-details: always
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
 
 # LOGGING
 logging:
   level:
-    com.university.audit: DEBUG
-    org.springframework.kafka: INFO
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.university.audit: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.kafka: ${LOGGING_LEVEL_KAFKA:INFO}
     org.apache.kafka: WARN
-
----
-# PERFIL DOCKER
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-  datasource:
-    url: jdbc:postgresql://postgres-audit:5432/audit_db
-
-  kafka:
-    bootstrap-servers: kafka:29092
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/

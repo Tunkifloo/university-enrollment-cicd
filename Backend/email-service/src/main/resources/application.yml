@@ -1,9 +1,9 @@
 server:
-  port: 8083
+  port: ${EMAIL_SERVICE_PORT:8083}
 
 spring:
   application:
-    name: email-service
+    name: ${EMAIL_SERVICE_NAME:email-service}
 
   cloud:
     compatibility-verifier:
@@ -11,10 +11,11 @@ spring:
 
   # CONFIGURACIÓN DE RABBITMQ
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: admin
-    password: admin
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:admin}
+    password: ${RABBITMQ_DEFAULT_PASS:admin}
+    virtual-host: ${RABBITMQ_DEFAULT_VHOST:/}
     listener:
       simple:
         retry:
@@ -30,7 +31,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -40,40 +41,36 @@ eureka:
 # RABBITMQ QUEUES
 rabbitmq:
   queue:
-    email: email.queue
+    email: ${RABBITMQ_EMAIL_QUEUE:email.queue}
 
-# EMAIL CONFIGURATION (Simulado)
+# EMAIL CONFIGURATION
 email:
-  enabled: true
-  simulation-mode: true
+  enabled: ${EMAIL_ENABLED:true}
+  simulation-mode: ${EMAIL_SIMULATION_MODE:true}
+
+# SMTP Configuration (para cuando simulation-mode = false)
+smtp:
+  host: ${SMTP_HOST:smtp.gmail.com}
+  port: ${SMTP_PORT:587}
+  username: ${SMTP_USERNAME:noreply@university.com}
+  password: ${SMTP_PASSWORD:change-me}
+  auth: ${SMTP_AUTH:true}
+  starttls:
+    enable: ${SMTP_STARTTLS_ENABLE:true}
 
 # ACTUATOR
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics}
   endpoint:
     health:
-      show-details: always
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
 
 # LOGGING
 logging:
   level:
-    com.university.email: DEBUG
-    org.springframework.amqp: INFO
-
----
-# PERFIL DOCKER
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-  rabbitmq:
-    host: rabbitmq
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.university.email: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.amqp: ${LOGGING_LEVEL_RABBITMQ:INFO}
