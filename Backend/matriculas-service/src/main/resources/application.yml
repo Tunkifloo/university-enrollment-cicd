@@ -13,7 +13,7 @@ spring:
   datasource:
     url: ${MATRICULAS_DB_URL:jdbc:postgresql://localhost:5434/matriculas_db}
     username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:admin}
+    password: ${POSTGRES_PASSWORD:admin123}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
@@ -33,18 +33,22 @@ spring:
           lob:
             non_contextual_creation: true
 
-  # FLYWAY (si lo usas)
-  flyway:
-    enabled: false
-    baseline-on-migrate: true
-    locations: classpath:db/migration
-
-  # CONFIGURACIÓN DE KAFKA (para publicar eventos)
+  # CONFIGURACIÓN DE KAFKA
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+  # CONFIGURACIÓN DE RABBITMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:admin}
+    password: ${RABBITMQ_DEFAULT_PASS:admin123}
+    virtual-host: ${RABBITMQ_DEFAULT_VHOST:/}
 
 # EUREKA CLIENT
 eureka:
@@ -57,11 +61,27 @@ eureka:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
 
+# JWT CONFIGURATION (para validar tokens del Auth Service)
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-change-in-production-min-256-bits-long-jhoneirokun777-university-system}
+
 # KAFKA TOPICS
 kafka:
   topics:
-    faculty-created: ${KAFKA_FACULTY_CREATED_TOPIC:faculty.created}
     audit: ${KAFKA_AUDIT_TOPIC:audit.events}
+    faculty-created: ${KAFKA_FACULTY_CREATED_TOPIC:faculty.created}
+    faculty-updated: ${KAFKA_FACULTY_UPDATED_TOPIC:faculty.updated}
+    faculty-deleted: ${KAFKA_FACULTY_DELETED_TOPIC:faculty.deleted}
+    career-created: ${KAFKA_CAREER_CREATED_TOPIC:career.created}
+    career-updated: ${KAFKA_CAREER_UPDATED_TOPIC:career.updated}
+    career-deleted: ${KAFKA_CAREER_DELETED_TOPIC:career.deleted}
+
+# RABBITMQ CONFIGURATION
+rabbitmq:
+  exchange:
+    email: ${RABBITMQ_EMAIL_EXCHANGE:email.exchange}
+  routing-key:
+    email: ${RABBITMQ_EMAIL_ROUTING_KEY:email.routing.key}
 
 # ACTUATOR
 management:
@@ -77,7 +97,7 @@ management:
 logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
-    com.springback.apimatriculas: ${LOGGING_LEVEL_APP:DEBUG}
-    org.springframework.web: ${LOGGING_LEVEL_WEB:INFO}
+    com.university.matriculas: ${LOGGING_LEVEL_APP:DEBUG}
+    org.springframework.security: ${LOGGING_LEVEL_WEB:INFO}
     org.hibernate.SQL: ${LOGGING_LEVEL_SQL:DEBUG}
     org.springframework.kafka: ${LOGGING_LEVEL_KAFKA:INFO}

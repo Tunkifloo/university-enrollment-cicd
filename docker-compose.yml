@@ -324,6 +324,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       eureka-server:
         condition: service_started
     environment:
@@ -337,11 +339,31 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - KAFKA_TOPIC_FACULTY_CREATED=${KAFKA_FACULTY_CREATED_TOPIC}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_AUDIT_TOPIC=${KAFKA_AUDIT_TOPIC}
+      - KAFKA_FACULTY_CREATED_TOPIC=${KAFKA_FACULTY_CREATED_TOPIC}
+      - KAFKA_FACULTY_UPDATED_TOPIC=${KAFKA_FACULTY_UPDATED_TOPIC}
+      - KAFKA_FACULTY_DELETED_TOPIC=${KAFKA_FACULTY_DELETED_TOPIC}
+      - KAFKA_CAREER_CREATED_TOPIC=${KAFKA_CAREER_CREATED_TOPIC}
+      - KAFKA_CAREER_UPDATED_TOPIC=${KAFKA_CAREER_UPDATED_TOPIC}
+      - KAFKA_CAREER_DELETED_TOPIC=${KAFKA_CAREER_DELETED_TOPIC}
+      - RABBITMQ_EMAIL_EXCHANGE=${RABBITMQ_EMAIL_EXCHANGE}
+      - RABBITMQ_EMAIL_ROUTING_KEY=${RABBITMQ_EMAIL_ROUTING_KEY}
       - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
       - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
       - LOGGING_LEVEL_SQL=${LOGGING_LEVEL_SQL}
+      - LOGGING_LEVEL_KAFKA=${LOGGING_LEVEL_KAFKA}
     ports:
       - "${MATRICULAS_SERVICE_PORT}:8085"
     networks:
       - university-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8085/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

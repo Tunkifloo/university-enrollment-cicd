@@ -8,6 +8,7 @@ import com.springback.apimatriculas.exception.custom.BusinessRuleException;
 import com.springback.apimatriculas.exception.custom.DuplicateResourceException;
 import com.springback.apimatriculas.exception.custom.ResourceNotFoundException;
 import com.springback.apimatriculas.repository.FacultadRepository;
+import com.springback.apimatriculas.service.EventPublisherService;
 import com.springback.apimatriculas.service.interfaces.IFacultadService;
 import com.springback.apimatriculas.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class FacultadServiceImpl implements IFacultadService {
 
     private final FacultadRepository facultadRepository;
     private final FacultadMapper facultadMapper;
+    private final EventPublisherService eventPublisher;
 
     @Override
     @Transactional
@@ -42,6 +44,12 @@ public class FacultadServiceImpl implements IFacultadService {
         Facultad savedFacultad = facultadRepository.save(facultad);
 
         log.info("Facultad creada exitosamente con ID: {}", savedFacultad.getFacultadId());
+
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishFacultyCreatedEvent(
+                savedFacultad.getFacultadId(),
+                savedFacultad.getNombre()
+        );
 
         // Convertir a DTO de respuesta
         return facultadMapper.toResponseDTO(savedFacultad);
@@ -101,6 +109,12 @@ public class FacultadServiceImpl implements IFacultadService {
 
         log.info("Facultad actualizada exitosamente con ID: {}", updatedFacultad.getFacultadId());
 
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishFacultyUpdatedEvent(
+                updatedFacultad.getFacultadId(),
+                updatedFacultad.getNombre()
+        );
+
         return facultadMapper.toResponseDTO(updatedFacultad);
     }
 
@@ -127,6 +141,12 @@ public class FacultadServiceImpl implements IFacultadService {
         facultadRepository.save(facultad);
 
         log.info("Facultad eliminada (desactivada) exitosamente con ID: {}", id);
+
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishFacultyDeletedEvent(
+                facultad.getFacultadId(),
+                facultad.getNombre()
+        );
     }
 
     @Override

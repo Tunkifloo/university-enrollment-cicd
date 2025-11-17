@@ -10,6 +10,7 @@ import com.springback.apimatriculas.exception.custom.DuplicateResourceException;
 import com.springback.apimatriculas.exception.custom.ResourceNotFoundException;
 import com.springback.apimatriculas.repository.CarreraRepository;
 import com.springback.apimatriculas.repository.FacultadRepository;
+import com.springback.apimatriculas.service.EventPublisherService;
 import com.springback.apimatriculas.service.interfaces.ICarreraService;
 import com.springback.apimatriculas.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class CarreraServiceImpl implements ICarreraService {
     private final CarreraRepository carreraRepository;
     private final FacultadRepository facultadRepository;
     private final CarreraMapper carreraMapper;
+    private final EventPublisherService eventPublisher;
 
     @Override
     @Transactional
@@ -48,13 +50,21 @@ public class CarreraServiceImpl implements ICarreraService {
 
         // Convertir DTO a Entidad
         Carrera carrera = carreraMapper.toEntity(requestDTO);
+        carrera.setFacultad(facultad);
 
         // Guardar en la base de datos
         Carrera savedCarrera = carreraRepository.save(carrera);
 
         log.info("Carrera creada exitosamente con ID: {}", savedCarrera.getCarreraId());
 
-        // Convertir a DTO de respuesta
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishCareerCreatedEvent(
+                savedCarrera.getCarreraId(),
+                savedCarrera.getNombre(),
+                facultad.getFacultadId(),
+                facultad.getNombre()
+        );
+
         return carreraMapper.toResponseDTO(savedCarrera);
     }
 
@@ -114,6 +124,7 @@ public class CarreraServiceImpl implements ICarreraService {
                 .orElseThrow(() -> new ResourceNotFoundException(Constants.CARRERA, id));
 
         // Validar que la nueva facultad exista y esté activa (si cambió)
+        Facultad facultad = carrera.getFacultad();
         if (!carrera.getFacultad().getFacultadId().equals(requestDTO.facultadId())) {
             Facultad nuevaFacultad = facultadRepository.findById(requestDTO.facultadId())
                     .orElseThrow(() -> new ResourceNotFoundException(Constants.FACULTAD, requestDTO.facultadId()));
@@ -121,6 +132,9 @@ public class CarreraServiceImpl implements ICarreraService {
             if (!nuevaFacultad.getActivo()) {
                 throw new BusinessRuleException("No se puede asignar una carrera a una facultad inactiva");
             }
+
+            facultad = nuevaFacultad;
+            carrera.setFacultad(nuevaFacultad);
         }
 
         // Validar que el nombre no esté duplicado (si cambió)
@@ -136,6 +150,14 @@ public class CarreraServiceImpl implements ICarreraService {
         Carrera updatedCarrera = carreraRepository.save(carrera);
 
         log.info("Carrera actualizada exitosamente con ID: {}", updatedCarrera.getCarreraId());
+
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishCareerUpdatedEvent(
+                updatedCarrera.getCarreraId(),
+                updatedCarrera.getNombre(),
+                facultad.getFacultadId(),
+                facultad.getNombre()
+        );
 
         return carreraMapper.toResponseDTO(updatedCarrera);
     }
@@ -154,6 +176,12 @@ public class CarreraServiceImpl implements ICarreraService {
         carreraRepository.save(carrera);
 
         log.info("Carrera eliminada (desactivada) exitosamente con ID: {}", id);
+
+        // PUBLICAR EVENTO EN KAFKA
+        eventPublisher.publishCareerDeletedEvent(
+                carrera.getCarreraId(),
+                carrera.getNombre()
+        );
     }
 
     @Override

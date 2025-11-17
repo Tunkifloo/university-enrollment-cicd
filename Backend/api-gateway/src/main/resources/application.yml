@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: ${GATEWAY_SERVICE_NAME:api-gateway}
+    name: api-gateway
 
   cloud:
     compatibility-verifier:
@@ -17,8 +17,8 @@ spring:
             allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
             allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}
             allowed-headers: ${CORS_ALLOWED_HEADERS:*}
-            allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
-            max-age: ${CORS_MAX_AGE:3600}
+            allow-credentials: true
+            max-age: 3600
 
       # Rutas dinámicas con descubrimiento de servicios
       discovery:
@@ -28,7 +28,21 @@ spring:
 
       # Rutas específicas
       routes:
-        # Auth Service
+        # ==================== AUTH SERVICE ====================
+        - id: auth-register
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/register
+          filters:
+            - StripPrefix=2
+
+        - id: auth-login
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/login
+          filters:
+            - StripPrefix=2
+
         - id: auth-service
           uri: lb://auth-service
           predicates:
@@ -36,7 +50,24 @@ spring:
           filters:
             - StripPrefix=2
 
-        # Matriculas Service
+        # ==================== MATRICULAS SERVICE ====================
+        # Facultades
+        - id: matriculas-facultades
+          uri: lb://matriculas-service
+          predicates:
+            - Path=/api/v1/matriculas/facultades/**
+          filters:
+            - StripPrefix=2
+
+        # Carreras
+        - id: matriculas-carreras
+          uri: lb://matriculas-service
+          predicates:
+            - Path=/api/v1/matriculas/carreras/**
+          filters:
+            - StripPrefix=2
+
+        # Ruta genérica para matrículas
         - id: matriculas-service
           uri: lb://matriculas-service
           predicates:
@@ -44,7 +75,7 @@ spring:
           filters:
             - StripPrefix=2
 
-        # Audit Service
+        # ==================== AUDIT SERVICE ====================
         - id: audit-service
           uri: lb://audit-service
           predicates:
@@ -52,7 +83,8 @@ spring:
           filters:
             - StripPrefix=2
 
-        # Email Service (solo para admin/health)
+        # ==================== EMAIL SERVICE ====================
+        # Solo para admin/health
         - id: email-service
           uri: lb://email-service
           predicates:
@@ -64,7 +96,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: ${GATEWAY_EUREKA_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -76,10 +108,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,gateway}
+        include: health,info,metrics,gateway
   endpoint:
     health:
-      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
+      show-details: always
     gateway:
       enabled: true
 

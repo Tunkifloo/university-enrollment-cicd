@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class FacultadController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<FacultadResponseDTO> create(
             @Valid @RequestBody FacultadRequestDTO requestDTO) {
         log.info("POST /facultades - Creando nueva facultad");
@@ -112,6 +114,7 @@ public class FacultadController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<FacultadResponseDTO> update(
             @Parameter(description = "ID de la facultad", example = "1")
             @PathVariable Long id,
@@ -130,6 +133,7 @@ public class FacultadController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<Void> delete(
             @Parameter(description = "ID de la facultad", example = "1")
             @PathVariable Long id) {
