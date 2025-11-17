@@ -24,8 +24,10 @@ public class AuditService {
         log.info("Registrando evento de auditoría: {} - {}",
                 event.getEventType(), event.getAction());
 
+        EventType eventType = EventType.valueOf(event.getEventType());
+
         AuditLog auditLog = AuditLog.builder()
-                .eventType(event.getEventType())
+                .eventType(eventType)
                 .userId(event.getUserId())
                 .userEmail(event.getUserEmail())
                 .action(event.getAction())

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuditEvent implements Serializable {
-    private EventType eventType;
+    private String eventType;
     private Long userId;
     private String userEmail;
     private String action;

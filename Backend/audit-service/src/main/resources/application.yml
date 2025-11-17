@@ -43,7 +43,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-        spring.json.type.mapping: auditEvent:com.university.auditservice.dto.AuditEvent
+        spring.json.value.default.type: com.university.auditservice.dto.AuditEvent
 
 # EUREKA CLIENT
 eureka:

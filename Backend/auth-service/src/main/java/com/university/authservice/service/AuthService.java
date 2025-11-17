@@ -25,7 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RabbitTemplate rabbitTemplate;
-    private final KafkaTemplate<String, AuditEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${rabbitmq.exchange.email}")
     private String emailExchange;
