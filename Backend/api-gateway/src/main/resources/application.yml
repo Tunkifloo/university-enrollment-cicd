@@ -14,11 +14,27 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-            allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}
-            allowed-headers: ${CORS_ALLOWED_HEADERS:*}
-            allow-credentials: true
-            max-age: 3600
+            allowedOriginPatterns:
+              - "http://localhost:5173"
+              - "http://localhost:80"
+              - "http://localhost"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - Accept
+              - Origin
+              - X-Requested-With
+            exposedHeaders:
+              - Authorization
+            allowCredentials: true
+            maxAge: 3600
 
       # Rutas dinámicas con descubrimiento de servicios
       discovery:

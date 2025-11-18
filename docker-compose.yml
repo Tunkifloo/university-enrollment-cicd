@@ -374,3 +374,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # ==================== FRONTEND ====================
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    container_name: matriculas-frontend
+    restart: unless-stopped
+    ports:
+      - "${VITE_DEV_PORT}:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks:
+      - university-network
