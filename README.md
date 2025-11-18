@@ -1,552 +1,761 @@
-# Sistema de Matrículas Universitarias
+# Sistema de Matrículas Universitarias - Arquitectura de Microservicios
 
-Sistema full-stack para la gestión de matrículas académicas en instituciones de educación superior, construido con arquitectura en capas y patrones de diseño enterprise.
+<div align="center">
 
-## Tabla de Contenidos
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-brightgreen)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2024.0.1-blue)
+![Java](https://img.shields.io/badge/Java-17-orange)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+Sistema de gestión de matrículas universitarias construido con arquitectura de microservicios, implementando patrones enterprise y mejores prácticas de desarrollo.
+
+[Características](#características) • [Arquitectura](#arquitectura) • [Instalación](#instalación) • [Documentación](#documentación) • [Contribuir](#contribuir)
+
+</div>
+
+---
+
+## 📋 Tabla de Contenidos
 
 - [Descripción General](#descripción-general)
-- [Stack Tecnológico](#stack-tecnológico)
+- [Características](#características)
 - [Arquitectura del Sistema](#arquitectura-del-sistema)
-- [Patrones de Diseño](#patrones-de-diseño)
+    - [Microservicios](#microservicios)
+    - [Infraestructura](#infraestructura)
+- [Stack Tecnológico](#stack-tecnológico)
 - [Requisitos Previos](#requisitos-previos)
-- [Guía de Instalación con Docker](#guía-de-instalación-con-docker)
-- [Instalación Local](#instalación-local)
-- [Documentación de Endpoints](#documentación-de-endpoints)
+- [Instalación y Configuración](#instalación-y-configuración)
+    - [Instalación con Docker](#instalación-con-docker-recomendado)
+    - [Instalación Local](#instalación-local)
+- [Documentación de APIs](#documentación-de-apis)
+- [Patrones de Diseño](#patrones-de-diseño)
 - [Estructura del Proyecto](#estructura-del-proyecto)
-- [Configuración Avanzada](#configuración-avanzada)
-- [Migración de Base de Datos](#migración-de-base-de-datos)
+- [Monitoreo y Observabilidad](#monitoreo-y-observabilidad)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
 
-## Descripción General
+---
 
-Aplicación empresarial que permite la gestión integral de facultades y carreras universitarias, implementando las mejores prácticas de desarrollo de software, arquitectura limpia y patrones de diseño robustos. El sistema proporciona una interfaz web intuitiva respaldada por una API RESTful completamente documentada.
+## 🎯 Descripción General
 
-## Stack Tecnológico
+Sistema empresarial de gestión de matrículas universitarias que permite administrar facultades, carreras, estudiantes y el proceso completo de matrícula académica. El sistema ha evolucionado desde una arquitectura monolítica a una moderna arquitectura de microservicios, proporcionando escalabilidad, resiliencia y mantenibilidad.
+
+**Características principales:**
+- 🏢 Gestión integral de facultades y carreras
+- 👥 Sistema de autenticación y autorización con JWT
+- 📧 Notificaciones por email automatizadas
+- 📊 Auditoría completa de eventos del sistema
+- 🔍 Service Discovery con Eureka
+- 🚪 API Gateway centralizado con enrutamiento inteligente
+- 🎨 Interfaz moderna con React y TypeScript
+
+---
+
+## ✨ Características
+
+### Funcionales
+- ✅ CRUD completo de Facultades y Carreras
+- ✅ Sistema de autenticación basado en JWT
+- ✅ Registro y gestión de usuarios
+- ✅ Notificaciones automáticas por email
+- ✅ Auditoría de todas las operaciones
+- ✅ Validación de datos en múltiples capas
+- ✅ Gestión de relaciones entre entidades
+
+### No Funcionales
+- 🚀 **Escalabilidad horizontal**: Cada microservicio puede escalar independientemente
+- 🔒 **Seguridad**: JWT, validación de tokens, CORS configurado
+- 📈 **Observabilidad**: Actuator endpoints, logging estructurado
+- 🔄 **Resiliencia**: Health checks, reintentos automáticos
+- 🐳 **Contenedorización**: Todo el sistema dockerizado
+- 📊 **Event-Driven**: Comunicación asíncrona con Kafka y RabbitMQ
+
+---
+
+## 🏗️ Arquitectura del Sistema
+
+### Diagrama de Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          CAPA DE CLIENTE                                 │
+│                                                                           │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                    React Frontend (SPA)                          │  │
+│  │              TypeScript + Zustand + Tailwind CSS                 │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────┬──────────────────────────────────────┘
+                                    │ HTTP/REST (JSON)
+┌───────────────────────────────────▼──────────────────────────────────────┐
+│                       CAPA DE GATEWAY                                     │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │              Spring Cloud Gateway (Port 8080)                    │  │
+│  │   • Enrutamiento Inteligente    • JWT Validation                │  │
+│  │   • CORS                         • Load Balancing                │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────┬──────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+┌───────────────────▼───┐ ┌─────────▼────────┐ ┌──▼─────────────────────┐
+│   Auth Service        │ │ Matriculas       │ │  Audit Service         │
+│   (Port 8082)         │ │ Service          │ │  (Port 8084)           │
+│                       │ │ (Port 8085)      │ │                        │
+│ • User Management     │ │ • Faculty CRUD   │ │ • Event Logging        │
+│ • JWT Generation      │ │ • Career CRUD    │ │ • Compliance           │
+│ • Authentication      │ │ • Business Logic │ │ • Analytics            │
+│                       │ │                  │ │                        │
+│ PostgreSQL (Auth DB)  │ │ PostgreSQL       │ │ PostgreSQL (Audit DB)  │
+└───────┬───────────────┘ └────┬─────────────┘ └────────┬───────────────┘
+        │                      │                         │
+        │                      │                         │
+        ├──────────────────────┴─────────────────────────┤
+        │                                                 │
+┌───────▼─────────────────────────────────────────────────▼───────────────┐
+│                    SERVICE DISCOVERY LAYER                              │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │              Eureka Server (Port 8761)                           │  │
+│  │           • Service Registration                                 │  │
+│  │           • Health Monitoring                                    │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   CAPA DE MENSAJERÍA ASÍNCRONA                          │
+│                                                                           │
+│  ┌──────────────────────────┐      ┌──────────────────────────────┐   │
+│  │    RabbitMQ (5672)       │      │      Kafka (9092)            │   │
+│  │                          │      │                              │   │
+│  │  Queue: email.queue      │      │  Topics:                     │   │
+│  │  Exchange: email.exchange│      │  • audit.events              │   │
+│  │                          │      │  • user.registered           │   │
+│  │  Consumer:               │      │  • faculty.created           │   │
+│  │  ↓                       │      │  • career.created            │   │
+│  │  Email Service           │      │                              │   │
+│  │  (Port 8083)             │      │  Consumers: Audit Service    │   │
+│  │                          │      │                              │   │
+│  │  • SMTP Integration      │      │  Producers: Auth, Matriculas │   │
+│  │  • Template Engine       │      │                              │   │
+│  │  • Async Processing      │      │                              │   │
+│  └──────────────────────────┘      └──────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        CAPA DE PERSISTENCIA                              │
+│                                                                           │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐             │
+│  │ PostgreSQL   │    │ PostgreSQL   │    │ PostgreSQL   │             │
+│  │ Auth DB      │    │ Matriculas   │    │ Audit DB     │             │
+│  │ (Port 5432)  │    │ DB           │    │ (Port 5433)  │             │
+│  │              │    │ (Port 5434)  │    │              │             │
+│  │ • Users      │    │ • Facultades │    │ • AuditLogs  │             │
+│  │ • Roles      │    │ • Carreras   │    │ • Events     │             │
+│  └──────────────┘    └──────────────┘    └──────────────┘             │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Microservicios
+
+#### 1. **Eureka Server** (Service Discovery)
+- **Puerto**: 8761
+- **Propósito**: Registro y descubrimiento de servicios
+- **Tecnologías**: Spring Cloud Netflix Eureka
+- **Características**:
+    - Dashboard de monitoreo de servicios
+    - Health checks automáticos
+    - Auto-registration de microservicios
+
+#### 2. **API Gateway**
+- **Puerto**: 8080
+- **Propósito**: Punto de entrada único para todas las peticiones
+- **Tecnologías**: Spring Cloud Gateway
+- **Características**:
+    - Enrutamiento dinámico basado en Eureka
+    - Validación de tokens JWT
+    - CORS configurado
+    - Load balancing automático
+    - Rate limiting
+    - Request/Response logging
+
+**Rutas configuradas:**
+```yaml
+/api/v1/auth/**        → auth-service
+/api/v1/matriculas/**  → matriculas-service
+/api/v1/audit/**       → audit-service
+/api/v1/email/**       → email-service (admin only)
+```
+
+#### 3. **Auth Service**
+- **Puerto**: 8082
+- **Base de Datos**: PostgreSQL (auth_db)
+- **Propósito**: Autenticación y gestión de usuarios
+- **Características**:
+    - Registro de usuarios
+    - Login con JWT
+    - Refresh tokens
+    - Gestión de roles
+    - Publicación de eventos de auditoría (Kafka)
+    - Envío de emails de bienvenida (RabbitMQ)
+
+**Endpoints principales:**
+```
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+GET  /api/v1/auth/profile
+```
+
+#### 4. **Matriculas Service**
+- **Puerto**: 8085
+- **Base de Datos**: PostgreSQL (matriculas_db)
+- **Propósito**: Gestión de facultades y carreras
+- **Características**:
+    - CRUD de Facultades
+    - CRUD de Carreras
+    - Validaciones de negocio
+    - Publicación de eventos (Kafka)
+    - Envío de notificaciones (RabbitMQ)
+
+**Endpoints principales:**
+```
+GET    /api/v1/matriculas/facultades
+POST   /api/v1/matriculas/facultades
+PUT    /api/v1/matriculas/facultades/{id}
+DELETE /api/v1/matriculas/facultades/{id}
+
+GET    /api/v1/matriculas/carreras
+POST   /api/v1/matriculas/carreras
+PUT    /api/v1/matriculas/carreras/{id}
+DELETE /api/v1/matriculas/carreras/{id}
+GET    /api/v1/matriculas/carreras/facultad/{facultadId}
+```
+
+#### 5. **Email Service**
+- **Puerto**: 8083
+- **Propósito**: Procesamiento asíncrono de emails
+- **Características**:
+    - Consumidor de RabbitMQ
+    - Integración con SMTP (Gmail)
+    - Templates HTML
+    - Modo simulación para desarrollo
+    - Reintentos automáticos
+
+**Tipos de emails:**
+- Email de bienvenida (registro de usuario)
+- Notificaciones de facultades/carreras
+- Alertas administrativas
+
+#### 6. **Audit Service**
+- **Puerto**: 8084
+- **Base de Datos**: PostgreSQL (audit_db)
+- **Propósito**: Auditoría y logging de eventos
+- **Características**:
+    - Consumidor de Kafka
+    - Logging de todas las operaciones
+    - Trazabilidad completa
+    - Queries de auditoría
+
+**Eventos auditados:**
+- `user.registered` - Registro de usuarios
+- `faculty.created` - Creación de facultades
+- `faculty.updated` - Actualización de facultades
+- `faculty.deleted` - Eliminación de facultades
+- `career.created` - Creación de carreras
+- `career.updated` - Actualización de carreras
+- `career.deleted` - Eliminación de carreras
+
+### Infraestructura
+
+#### **RabbitMQ**
+- **Puerto**: 5672 (AMQP)
+- **Puerto Gestión**: 15672 (UI)
+- **Propósito**: Mensajería asíncrona para emails
+- **Configuración**:
+  ```
+  Queue: email.queue
+  Exchange: email.exchange (direct)
+  Routing Key: email.routing.key
+  ```
+
+#### **Apache Kafka**
+- **Puerto**: 9092 (externo)
+- **Puerto interno**: 29092
+- **Propósito**: Event streaming para auditoría
+- **UI de Gestión**: Puerto 8090 (Kafka UI)
+- **Topics**:
+    - `audit.events` - Eventos generales de auditoría
+    - `user.registered` - Registro de usuarios
+    - `faculty.created/updated/deleted` - Eventos de facultades
+    - `career.created/updated/deleted` - Eventos de carreras
+
+#### **PostgreSQL**
+Tres bases de datos independientes:
+1. **auth_db** (Puerto 5432) - Auth Service
+2. **matriculas_db** (Puerto 5434) - Matriculas Service
+3. **audit_db** (Puerto 5433) - Audit Service
+
+---
+
+## 🛠️ Stack Tecnológico
 
 ### Backend
 
-- **Java 17**: Lenguaje principal con características modernas
-- **Spring Boot 3.5.6**: Framework enterprise para aplicaciones Java
-- **Spring Data JPA**: Abstracción de persistencia con Hibernate
-- **PostgreSQL 16**: Sistema de gestión de base de datos relacional
-- **Flyway**: Herramienta de migración y versionado de base de datos
-- **MapStruct**: Framework de mapeo de objetos tipo-seguro
-- **Lombok**: Reducción de código boilerplate
-- **Maven**: Gestión de dependencias y construcción del proyecto
-- **Swagger/OpenAPI**: Documentación interactiva de la API
+| Tecnología | Versión | Propósito |
+|-----------|---------|-----------|
+| Java | 17 | Lenguaje de programación |
+| Spring Boot | 3.5.6 | Framework principal |
+| Spring Cloud | 2024.0.1 | Microservicios |
+| Spring Cloud Gateway | - | API Gateway |
+| Spring Cloud Netflix Eureka | - | Service Discovery |
+| Spring Data JPA | - | Persistencia |
+| Spring Security | - | Seguridad |
+| Spring Kafka | - | Integración Kafka |
+| Spring AMQP | - | Integración RabbitMQ |
+| PostgreSQL | 16 | Base de datos |
+| Flyway | - | Migración de BD |
+| MapStruct | 1.6.3 | Mapeo de objetos |
+| Lombok | 1.18.34 | Reducción de boilerplate |
+| JWT (JJWT) | 0.12.6 | Tokens de autenticación |
+| Maven | 3.8+ | Gestión de dependencias |
+
+### Infraestructura
+
+| Tecnología | Versión | Propósito |
+|-----------|---------|-----------|
+| Docker | 20.10+ | Contenedorización |
+| Docker Compose | 2.0+ | Orquestación |
+| Kafka | 3.6.1 | Event Streaming |
+| Zookeeper | 3.8.3 | Coordinación Kafka |
+| RabbitMQ | 3.13 | Message Broker |
+| Nginx | latest | Servidor web frontend |
 
 ### Frontend
 
-- **React 19**: Biblioteca de interfaz de usuario
-- **TypeScript 5.9**: JavaScript tipado para desarrollo escalable
-- **Vite 7**: Build tool de próxima generación
-- **Zustand 5**: Gestión de estado ligera y simple
-- **Tailwind CSS 3.4**: Framework CSS utility-first
-- **Axios**: Cliente HTTP para comunicación con el backend
+| Tecnología | Versión | Propósito |
+|-----------|---------|-----------|
+| React | 19 | UI Library |
+| TypeScript | 5.9 | Lenguaje tipado |
+| Vite | 7 | Build tool |
+| Zustand | 5 | State management |
+| Axios | - | HTTP client |
+| Tailwind CSS | 3.4 | Estilos |
 
-### DevOps
+### Herramientas de Desarrollo
 
-- **Docker**: Contenedorización de aplicaciones
-- **Docker Compose**: Orquestación de contenedores
-- **Nginx**: Servidor web para el frontend en producción
+- **IntelliJ IDEA** - IDE principal
+- **Postman** - Testing de APIs
+- **DBeaver** - Cliente PostgreSQL
+- **Git** - Control de versiones
 
-## Arquitectura del Sistema
+---
 
-### Arquitectura General
+## 📋 Requisitos Previos
 
-El sistema implementa una arquitectura de tres capas (Three-Tier Architecture) desacoplada mediante una API REST:
+### Opción 1: Docker (Recomendado para Producción)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CAPA DE PRESENTACIÓN                     │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │           React + TypeScript + Zustand                │  │
-│  │              (Single Page Application)                │  │
-│  └───────────────────────────────────────────────────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP/REST
-                           │ (JSON)
-┌──────────────────────────▼──────────────────────────────────┐
-│                     CAPA DE LÓGICA                          │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │              Spring Boot REST API                     │  │
-│  │  ┌─────────────────────────────────────────────────┐  │  │
-│  │  │ Controllers → Services → Repositories           │  │  │
-│  │  └─────────────────────────────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────────┘  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ JDBC
-                           │ (Hibernate/JPA)
-┌──────────────────────────▼──────────────────────────────────┐
-│                     CAPA DE DATOS                           │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │              PostgreSQL Database                      │  │
-│  │     (Esquema gestionado con Flyway)                   │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+```bash
+✅ Docker Desktop 20.10 o superior
+✅ Docker Compose 2.0 o superior
+✅ 8GB de RAM disponible
+✅ 10GB de espacio en disco
 ```
 
-### Arquitectura Backend (Layered Architecture)
+### Opción 2: Instalación Local (Desarrollo)
 
-El backend sigue una arquitectura en capas claramente definida:
-
-```
-src/main/java/com/springback/apimatriculas/
-│
-├── controller/              → CAPA DE PRESENTACIÓN
-│   ├── CarreraController    (Endpoints REST para Carreras)
-│   └── FacultadController   (Endpoints REST para Facultades)
-│
-├── service/                 → CAPA DE LÓGICA DE NEGOCIO
-│   ├── interfaces/
-│   │   ├── ICarreraService
-│   │   └── IFacultadService
-│   └── impl/
-│       ├── CarreraServiceImpl    (Lógica de negocio de Carreras)
-│       └── FacultadServiceImpl   (Lógica de negocio de Facultades)
-│
-├── repository/              → CAPA DE ACCESO A DATOS
-│   ├── CarreraRepository    (Spring Data JPA Repository)
-│   └── FacultadRepository   (Spring Data JPA Repository)
-│
-├── domain/model/            → CAPA DE DOMINIO
-│   ├── Carrera              (Entidad JPA)
-│   └── Facultad             (Entidad JPA)
-│
-├── dto/                     → DATA TRANSFER OBJECTS
-│   ├── request/
-│   │   ├── CarreraRequestDTO
-│   │   └── FacultadRequestDTO
-│   ├── response/
-│   │   ├── CarreraResponseDTO
-│   │   └── FacultadResponseDTO
-│   └── mapper/
-│       ├── CarreraMapper    (MapStruct Interface)
-│       └── FacultadMapper   (MapStruct Interface)
-│
-├── exception/               → MANEJO DE EXCEPCIONES
-│   ├── custom/
-│   │   ├── ResourceNotFoundException
-│   │   ├── DuplicateResourceException
-│   │   └── BusinessRuleException
-│   ├── ErrorResponse
-│   └── GlobalExceptionHandler
-│
-├── config/                  → CONFIGURACIONES
-│   ├── OpenApiConfig        (Swagger/OpenAPI)
-│   └── CorsConfig           (CORS Policy)
-│
-└── util/                    → UTILIDADES
-    └── Constants            (Constantes del sistema)
+```bash
+✅ Java JDK 17 o superior
+✅ Maven 3.8 o superior
+✅ Node.js 18 o superior
+✅ npm 9 o superior
+✅ PostgreSQL 16 o superior
+✅ Kafka 3.6+ (con Zookeeper)
+✅ RabbitMQ 3.13+
 ```
 
-**Responsabilidades por capa:**
+---
 
-1. **Controller Layer**: Maneja las solicitudes HTTP, valida la entrada (usando Bean Validation), delega a los servicios y formatea las respuestas
-2. **Service Layer**: Contiene la lógica de negocio, validaciones complejas, y coordina las operaciones entre repositorios
-3. **Repository Layer**: Abstracción de acceso a datos usando Spring Data JPA, con queries personalizadas cuando sea necesario
-4. **Domain Layer**: Define las entidades del dominio con sus relaciones y restricciones
-5. **DTO Layer**: Objetos de transferencia que desacoplan la representación externa de las entidades internas
+## 🚀 Instalación y Configuración
 
-### Arquitectura Frontend (Feature-Based)
+### Instalación con Docker (Recomendado)
 
-El frontend utiliza una arquitectura modular basada en características:
-
-```
-src/
-│
-├── features/                     → MÓDULOS DE CARACTERÍSTICAS
-│   ├── carreras/
-│   │   ├── components/           (Componentes específicos de Carreras)
-│   │   │   ├── CarreraForm.tsx
-│   │   │   ├── CarreraList.tsx
-│   │   │   └── CarreraCard.tsx
-│   │   ├── hooks/                (Custom Hooks)
-│   │   │   └── useCarreraActions.ts
-│   │   ├── store/                (Estado local con Zustand)
-│   │   │   └── carreraStore.ts
-│   │   └── CarrerasPage.tsx      (Página principal)
-│   │
-│   └── facultades/
-│       ├── components/
-│       │   ├── FacultadForm.tsx
-│       │   ├── FacultadList.tsx
-│       │   └── FacultadCard.tsx
-│       ├── hooks/
-│       │   └── useFacultadActions.ts
-│       ├── store/
-│       │   └── facultadStore.ts
-│       └── FacultadesPage.tsx
-│
-├── shared/                       → CÓDIGO COMPARTIDO
-│   ├── components/               (Componentes reutilizables)
-│   │   ├── Button.tsx
-│   │   ├── Modal.tsx
-│   │   └── LoadingSpinner.tsx
-│   ├── config/                   (Configuración)
-│   │   └── api.config.ts         (Axios instance)
-│   ├── types/                    (Tipos TypeScript)
-│   │   └── index.ts
-│   └── utils/                    (Utilidades)
-│       └── formatters.ts
-│
-├── App.tsx                       → APLICACIÓN PRINCIPAL
-└── main.tsx                      → PUNTO DE ENTRADA
-```
-
-## Patrones de Diseño
-
-### Backend
-
-#### 1. Layered Architecture (Arquitectura en Capas)
-
-Separación clara de responsabilidades en capas independientes, facilitando el mantenimiento y las pruebas.
-
-#### 2. Repository Pattern
-
-Abstracción del acceso a datos mediante interfaces de Spring Data JPA:
-
-```java
-@Repository
-public interface FacultadRepository extends JpaRepository<Facultad, Long> {
-    Optional<Facultad> findByNombre(String nombre);
-    boolean existsByNombre(String nombre);
-    List<Facultad> findByActivoTrue();
-}
-```
-
-#### 3. Service Layer Pattern
-
-Encapsulación de la lógica de negocio en servicios reutilizables:
-
-```java
-@Service
-@RequiredArgsConstructor
-public class FacultadServiceImpl implements IFacultadService {
-    private final FacultadRepository facultadRepository;
-    private final FacultadMapper facultadMapper;
-    
-    @Transactional
-    public FacultadResponseDTO create(FacultadRequestDTO requestDTO) {
-        // Lógica de negocio
-    }
-}
-```
-
-#### 4. Data Transfer Object (DTO) Pattern
-
-Separación entre la representación externa e interna de los datos:
-
-- **Request DTOs**: Validación de entrada con Bean Validation
-- **Response DTOs**: Formateo de salida
-- **Mappers**: Conversión automática con MapStruct
-
-```java
-@Mapper(componentModel = "spring")
-public interface FacultadMapper {
-    Facultad toEntity(FacultadRequestDTO dto);
-    FacultadResponseDTO toResponseDTO(Facultad entity);
-}
-```
-
-#### 5. Dependency Injection
-
-Inyección de dependencias mediante el contenedor IoC de Spring:
-
-```java
-@RequiredArgsConstructor  // Constructor injection via Lombok
-public class FacultadServiceImpl implements IFacultadService {
-    private final FacultadRepository facultadRepository;
-    private final FacultadMapper facultadMapper;
-}
-```
-
-#### 6. Exception Handling Pattern
-
-Manejo centralizado de excepciones con `@ControllerAdvice`:
-
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(...) {
-        // Manejo de error
-    }
-}
-```
-
-#### 7. Builder Pattern
-
-Construcción de objetos complejos mediante Records de Java y Lombok:
-
-```java
-public record FacultadRequestDTO(
-    @NotBlank String nombre,
-    @Size(max = 500) String descripcion,
-    Boolean activo
-) {
-    public FacultadRequestDTO {
-        if (activo == null) activo = true;
-    }
-}
-```
-
-### Frontend
-
-#### 1. Component-Based Architecture
-
-Interfaz construida con componentes reutilizables de React.
-
-#### 2. Custom Hooks Pattern
-
-Encapsulación de lógica reutilizable:
-
-```typescript
-export const useFacultadActions = () => {
-  const { setFacultades, addFacultad } = useFacultadStore();
-  
-  const fetchFacultades = async () => {
-    // Lógica de fetch
-  };
-  
-  return { fetchFacultades };
-};
-```
-
-#### 3. State Management (Flux Pattern)
-
-Gestión de estado global con Zustand:
-
-```typescript
-export const useFacultadStore = create<FacultadStore>((set) => ({
-  facultades: [],
-  setFacultades: (facultades) => set({ facultades }),
-  addFacultad: (facultad) => set((state) => ({
-    facultades: [...state.facultades, facultad]
-  }))
-}));
-```
-
-#### 4. Container/Presenter Pattern
-
-Separación entre lógica (hooks/stores) y presentación (componentes).
-
-## Requisitos Previos
-
-### Opción 1: Docker (Recomendado)
-
-- Docker Desktop 20.10 o superior
-- Docker Compose 2.0 o superior
-- 4GB de RAM disponible
-- 2GB de espacio en disco
-
-### Opción 2: Instalación Local
-
-- Java JDK 17 o superior
-- Maven 3.8 o superior
-- Node.js 18 o superior
-- npm 9 o superior
-- PostgreSQL 16 o superior
-
-## Guía de Instalación con Docker
-
-### 1. Clonar el Repositorio
+#### 1. Clonar el Repositorio
 
 ```bash
 git clone https://github.com/Tunkifloo/university-enrollment-system.git
 cd university-enrollment-system
 ```
 
-### 2. Configurar Variables de Entorno
+#### 2. Configurar Variables de Entorno
 
-Copiar el archivo de ejemplo y ajustar los valores según sea necesario:
+Crear archivo `.env` en la raíz del proyecto:
 
 ```bash
 cp .env.example .env
 ```
 
-Contenido del archivo `.env`:
+**Contenido del archivo `.env`:**
 
 ```env
-# PostgreSQL
-POSTGRES_DB=matriculas_db
+# ==================== SPRING PROFILES ====================
+SPRING_PROFILES_ACTIVE=prod
+
+# ==================== POSTGRES CONFIGURATION ====================
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=admin
+POSTGRES_PASSWORD=admin123
 
-# Backend
-DB_HOST=postgres
-DB_PORT=5432
-SERVER_PORT=8080
-JPA_DDL_AUTO=update
+# Database Names
+AUTH_DB_NAME=auth_db
+MATRICULAS_DB_NAME=matriculas_db
+AUDIT_DB_NAME=audit_db
 
-# Frontend
+# Database Ports (for external access)
+POSTGRES_AUTH_PORT=5432
+POSTGRES_MATRICULAS_PORT=5434
+POSTGRES_AUDIT_PORT=5433
+
+# ==================== JPA CONFIGURATION ====================
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+SPRING_JPA_SHOW_SQL=false
+
+# ==================== KAFKA CONFIGURATION ====================
+KAFKA_PORT=9092
+KAFKA_UI_PORT=8090
+KAFKA_BROKER_ID=1
+KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+KAFKA_LOG_RETENTION_HOURS=168
+
+# Kafka Topics
+KAFKA_AUDIT_TOPIC=audit.events
+KAFKA_USER_REGISTERED_TOPIC=user.registered
+KAFKA_FACULTY_CREATED_TOPIC=faculty.created
+KAFKA_FACULTY_UPDATED_TOPIC=faculty.updated
+KAFKA_FACULTY_DELETED_TOPIC=faculty.deleted
+KAFKA_CAREER_CREATED_TOPIC=career.created
+KAFKA_CAREER_UPDATED_TOPIC=career.updated
+KAFKA_CAREER_DELETED_TOPIC=career.deleted
+KAFKA_AUDIT_CONSUMER_GROUP=audit-service-group
+
+# ==================== RABBITMQ CONFIGURATION ====================
+RABBITMQ_PORT=5672
+RABBITMQ_MANAGEMENT_PORT=15672
+RABBITMQ_DEFAULT_USER=admin
+RABBITMQ_DEFAULT_PASS=admin123
+RABBITMQ_DEFAULT_VHOST=/
+
+# RabbitMQ Queues and Exchanges
+RABBITMQ_EMAIL_QUEUE=email.queue
+RABBITMQ_EMAIL_EXCHANGE=email.exchange
+RABBITMQ_EMAIL_ROUTING_KEY=email.routing.key
+
+# ==================== JWT CONFIGURATION ====================
+JWT_SECRET=dev-secret-key-change-in-production-min-256-bits-long-jhoneirokun777-university-system
+JWT_EXPIRATION=86400000
+JWT_REFRESH_EXPIRATION=604800000
+
+# ==================== SMTP CONFIGURATION ====================
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your-email@gmail.com
+SPRING_MAIL_PASSWORD=your-app-password
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+SMTP_FROM=your-email@gmail.com
+EMAIL_ENABLED=true
+EMAIL_SIMULATION_MODE=false
+APP_NOTIFICATION_ADMIN_EMAIL=admin@university.com
+
+# ==================== SERVICE PORTS ====================
+EUREKA_PORT=8761
+GATEWAY_PORT=8080
+AUTH_SERVICE_PORT=8082
+EMAIL_SERVICE_PORT=8083
+AUDIT_SERVICE_PORT=8084
+MATRICULAS_SERVICE_PORT=8085
+
+# ==================== FRONTEND CONFIGURATION ====================
 VITE_API_BASE_URL=http://localhost:8080/api/v1
 VITE_DEV_PORT=5173
+
+# ==================== LOGGING LEVELS ====================
+LOGGING_LEVEL_ROOT=INFO
+LOGGING_LEVEL_APP=DEBUG
+LOGGING_LEVEL_WEB=INFO
+LOGGING_LEVEL_SQL=DEBUG
+LOGGING_LEVEL_KAFKA=INFO
+LOGGING_LEVEL_RABBITMQ=INFO
 ```
 
-### 3. Construir y Levantar los Servicios
-
-Iniciar todos los contenedores en modo detached:
+#### 3. Construir y Levantar los Servicios
 
 ```bash
-docker-compose up -d
-```
+# Construir imágenes y levantar todos los servicios
+docker-compose up -d --build
 
-Este comando ejecutará:
-
-1. **Servicio PostgreSQL**: Base de datos en el puerto 5432
-2. **Servicio Backend**: API Spring Boot en el puerto 8080
-3. **Servicio Frontend**: Aplicación React en el puerto 5173
-
-### 4. Verificar los Servicios
-
-Verificar que todos los contenedores estén corriendo:
-
-```bash
-docker-compose ps
-```
-
-Salida esperada:
-
-```
-NAME                    STATUS              PORTS
-matriculas-db           Up 30 seconds       0.0.0.0:5432->5432/tcp
-matriculas-backend      Up 25 seconds       0.0.0.0:8080->8080/tcp
-matriculas-frontend     Up 20 seconds       0.0.0.0:5173->80/tcp
-```
-
-### 5. Acceder a la Aplicación
-
-- **Frontend**: `http://localhost:5173`
-- **Backend API**: `http://localhost:8080/api/v1`
-- **Swagger UI**: `http://localhost:8080/api/v1/swagger-ui.html`
-- **Health Check**: `http://localhost:8080/api/v1/actuator/health`
-
-### Comandos Docker Útiles
-
-```bash
 # Ver logs de todos los servicios
 docker-compose logs -f
 
 # Ver logs de un servicio específico
-docker-compose logs -f backend
+docker-compose logs -f auth-service
+```
 
+#### 4. Verificar el Estado de los Servicios
+
+```bash
+# Verificar que todos los contenedores estén corriendo
+docker-compose ps
+
+# Salida esperada:
+NAME                                  STATUS              PORTS
+university-system-eureka-server       Up 2 minutes        0.0.0.0:8761->8761/tcp
+university-system-api-gateway         Up 2 minutes        0.0.0.0:8080->8080/tcp
+university-system-auth-service        Up 2 minutes        0.0.0.0:8082->8082/tcp
+university-system-email-service       Up 2 minutes        0.0.0.0:8083->8083/tcp
+university-system-audit-service       Up 2 minutes        0.0.0.0:8084->8084/tcp
+university-system-matriculas-service  Up 2 minutes        0.0.0.0:8085->8085/tcp
+university-system-kafka               Up 2 minutes        0.0.0.0:9092->9092/tcp
+university-system-rabbitmq            Up 2 minutes        0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp
+postgres-auth                         Up 2 minutes        0.0.0.0:5432->5432/tcp
+postgres-matriculas                   Up 2 minutes        0.0.0.0:5434->5432/tcp
+postgres-audit                        Up 2 minutes        0.0.0.0:5433->5432/tcp
+matriculas-frontend                   Up 2 minutes        0.0.0.0:5173->80/tcp
+```
+
+#### 5. Acceder a las Interfaces
+
+| Servicio | URL | Credenciales |
+|----------|-----|--------------|
+| **Frontend** | http://localhost:5173 | - |
+| **API Gateway** | http://localhost:8080 | - |
+| **Eureka Dashboard** | http://localhost:8761 | - |
+| **RabbitMQ Management** | http://localhost:15672 | admin / admin123 |
+| **Kafka UI** | http://localhost:8090 | - |
+
+#### 6. Verificar Salud de los Servicios
+
+```bash
+# Health check del API Gateway
+curl http://localhost:8080/actuator/health
+
+# Health check del Auth Service
+curl http://localhost:8082/actuator/health
+
+# Health check del Matriculas Service
+curl http://localhost:8085/actuator/health
+
+# Health check del Audit Service
+curl http://localhost:8084/actuator/health
+
+# Health check del Email Service
+curl http://localhost:8083/actuator/health
+```
+
+#### 7. Comandos Útiles de Docker
+
+```bash
 # Detener todos los servicios
 docker-compose down
 
-# Detener y eliminar volúmenes (CUIDADO: elimina datos de la BD)
+# Detener y eliminar volúmenes (⚠️ elimina datos)
 docker-compose down -v
 
-# Reconstruir y levantar los servicios
-docker-compose up -d --build
+# Reconstruir un servicio específico
+docker-compose up -d --build auth-service
 
-# Reiniciar un servicio específico
-docker-compose restart backend
+# Ver logs en tiempo real
+docker-compose logs -f
 
-# Ejecutar comandos dentro de un contenedor
-docker-compose exec backend bash
-docker-compose exec postgres psql -U postgres -d matriculas_db
+# Reiniciar un servicio
+docker-compose restart matriculas-service
+
+# Ejecutar comando en un contenedor
+docker-compose exec auth-service sh
 ```
 
-## Instalación Local
+### Instalación Local (Desarrollo)
 
-### 1. Configurar Base de Datos
+#### 1. Configurar Bases de Datos
 
-Instalar PostgreSQL 16 y crear la base de datos:
-
-```bash
-# Conectar a PostgreSQL
-psql -U postgres
-
-# Crear base de datos
+```sql
+-- Crear las tres bases de datos
+CREATE DATABASE auth_db;
 CREATE DATABASE matriculas_db;
+CREATE DATABASE audit_db;
 
-# Crear usuario (opcional)
-CREATE USER matriculas_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE matriculas_db TO matriculas_user;
-
-# Salir
-\q
+-- Crear usuario (opcional)
+CREATE USER university_user WITH PASSWORD 'admin123';
+GRANT ALL PRIVILEGES ON DATABASE auth_db TO university_user;
+GRANT ALL PRIVILEGES ON DATABASE matriculas_db TO university_user;
+GRANT ALL PRIVILEGES ON DATABASE audit_db TO university_user;
 ```
 
-### 2. Configurar y Ejecutar el Backend
+#### 2. Instalar y Configurar Kafka
 
 ```bash
-# Navegar al directorio del backend
-cd Backend/API-matriculas
+# Descargar Kafka
+wget https://downloads.apache.org/kafka/3.6.1/kafka_2.13-3.6.1.tgz
+tar -xzf kafka_2.13-3.6.1.tgz
+cd kafka_2.13-3.6.1
 
-# Copiar archivo de configuración
-cp .env.example .env
+# Iniciar Zookeeper
+bin/zookeeper-server-start.sh config/zookeeper.properties
 
-# Editar .env con tus credenciales de base de datos
-nano .env
+# Iniciar Kafka (en otra terminal)
+bin/kafka-server-start.sh config/server.properties
+```
 
-# Compilar el proyecto
-mvn clean install
+#### 3. Instalar y Configurar RabbitMQ
 
-# Ejecutar la aplicación
+```bash
+# Ubuntu/Debian
+sudo apt-get install rabbitmq-server
+sudo systemctl start rabbitmq-server
+sudo rabbitmq-plugins enable rabbitmq_management
+
+# Windows (Chocolatey)
+choco install rabbitmq
+
+# macOS
+brew install rabbitmq
+brew services start rabbitmq
+```
+
+#### 4. Compilar y Ejecutar Microservicios
+
+```bash
+# Desde la raíz del proyecto
+cd Backend
+
+# Compilar todo el proyecto
+mvn clean install -DskipTests
+
+# Ejecutar cada servicio (en terminales separadas)
+
+# 1. Eureka Server
+cd eureka-server
+mvn spring-boot:run
+
+# 2. API Gateway
+cd api-gateway
+mvn spring-boot:run
+
+# 3. Auth Service
+cd auth-service
+mvn spring-boot:run
+
+# 4. Matriculas Service
+cd matriculas-service
+mvn spring-boot:run
+
+# 5. Email Service
+cd email-service
+mvn spring-boot:run
+
+# 6. Audit Service
+cd audit-service
 mvn spring-boot:run
 ```
 
-Alternativamente, ejecutar el JAR compilado:
+#### 5. Ejecutar Frontend
 
 ```bash
-mvn clean package
-java -jar target/API-matriculas-0.0.1-SNAPSHOT.jar
-```
-
-Verificar que el backend esté funcionando:
-
-```bash
-curl http://localhost:8080/api/v1/actuator/health
-```
-
-### 3. Configurar y Ejecutar el Frontend
-
-```bash
-# Navegar al directorio del frontend
 cd Frontend
-
-# Crear archivo de configuración
-echo "VITE_API_BASE_URL=http://localhost:8080/api/v1" > .env
-
-# Instalar dependencias
 npm install
-
-# Ejecutar en modo desarrollo
 npm run dev
 ```
 
-El frontend estará disponible en `http://localhost:5173`
+---
 
-### 4. Build de Producción (Frontend)
+## 📚 Documentación de APIs
 
-```bash
-# Construir para producción
-npm run build
+### Auth Service API
 
-# Previsualizar la build
-npm run preview
-```
+**Base URL**: `http://localhost:8080/api/v1/auth`
 
-## Documentación de Endpoints
-
-### URL Base
-
-```
-http://localhost:8080/api/v1
-```
-
-### Facultades
-
-#### Obtener todas las facultades
+#### Registro de Usuario
 
 ```http
-GET /facultades
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+
+Response 201 Created:
+{
+  "id": 1,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "roles": ["USER"],
+  "createdAt": "2025-11-17T10:30:00"
+}
 ```
 
-**Respuesta exitosa (200 OK):**
+#### Login
 
-```json
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "SecurePass123!"
+}
+
+Response 200 OK:
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 86400
+}
+```
+
+#### Obtener Perfil
+
+```http
+GET /api/v1/auth/profile
+Authorization: Bearer {token}
+
+Response 200 OK:
+{
+  "id": 1,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "roles": ["USER"]
+}
+```
+
+### Matriculas Service API
+
+**Base URL**: `http://localhost:8080/api/v1/matriculas`
+
+#### Gestión de Facultades
+
+```http
+# Listar todas las facultades
+GET /api/v1/matriculas/facultades
+Authorization: Bearer {token}
+
+Response 200 OK:
 [
   {
     "facultadId": 1,
@@ -554,865 +763,682 @@ GET /facultades
     "descripcion": "Facultad dedicada a la formación de ingenieros",
     "ubicacion": "Pabellón A - Campus Principal",
     "decano": "Dr. Juan Pérez Rodríguez",
-    "fechaRegistro": "2025-01-15T10:30:00",
-    "activo": true,
-    "cantidadCarreras": 4
-  }
-]
-```
-
-#### Obtener facultad por ID
-
-```http
-GET /facultades/{id}
-```
-
-**Parámetros:**
-- `id` (path): ID de la facultad
-
-**Respuesta exitosa (200 OK):**
-
-```json
-{
-  "facultadId": 1,
-  "nombre": "Facultad de Ingeniería",
-  "descripcion": "Facultad dedicada a la formación de ingenieros",
-  "ubicacion": "Pabellón A - Campus Principal",
-  "decano": "Dr. Juan Pérez Rodríguez",
-  "fechaRegistro": "2025-01-15T10:30:00",
-  "activo": true,
-  "cantidadCarreras": 4
-}
-```
-
-**Respuesta de error (404 Not Found):**
-
-```json
-{
-  "status": 404,
-  "message": "Recurso no encontrado",
-  "details": "Facultad con ID 999 no encontrada",
-  "timestamp": "2025-10-20T14:30:00",
-  "path": "/api/v1/facultades/999"
-}
-```
-
-#### Crear nueva facultad
-
-```http
-POST /facultades
-Content-Type: application/json
-```
-
-**Body:**
-
-```json
-{
-  "nombre": "Facultad de Arquitectura",
-  "descripcion": "Facultad de diseño arquitectónico",
-  "ubicacion": "Pabellón F",
-  "decano": "Arq. María López",
-  "activo": true
-}
-```
-
-**Validaciones:**
-- `nombre`: Requerido, entre 3 y 100 caracteres, único
-- `descripcion`: Opcional, máximo 500 caracteres
-- `ubicacion`: Opcional, máximo 100 caracteres
-- `decano`: Opcional, máximo 100 caracteres
-- `activo`: Opcional, por defecto `true`
-
-**Respuesta exitosa (201 Created):**
-
-```json
-{
-  "facultadId": 6,
-  "nombre": "Facultad de Arquitectura",
-  "descripcion": "Facultad de diseño arquitectónico",
-  "ubicacion": "Pabellón F",
-  "decano": "Arq. María López",
-  "fechaRegistro": "2025-10-20T14:30:00",
-  "activo": true,
-  "cantidadCarreras": 0
-}
-```
-
-**Respuesta de error (409 Conflict):**
-
-```json
-{
-  "status": 409,
-  "message": "Recurso duplicado",
-  "details": "Ya existe una Facultad con nombre 'Facultad de Arquitectura'",
-  "timestamp": "2025-10-20T14:30:00",
-  "path": "/api/v1/facultades"
-}
-```
-
-#### Actualizar facultad
-
-```http
-PUT /facultades/{id}
-Content-Type: application/json
-```
-
-**Body:**
-
-```json
-{
-  "nombre": "Facultad de Ingeniería y Tecnología",
-  "descripcion": "Facultad modernizada",
-  "ubicacion": "Pabellón A - Campus Principal",
-  "decano": "Dr. Juan Pérez Rodríguez",
-  "activo": true
-}
-```
-
-**Respuesta exitosa (200 OK):** Igual estructura que GET
-
-#### Eliminar facultad (eliminación lógica)
-
-```http
-DELETE /facultades/{id}
-```
-
-**Respuesta exitosa (204 No Content):** Sin contenido
-
-### Carreras
-
-#### Obtener todas las carreras
-
-```http
-GET /carreras
-```
-
-**Respuesta exitosa (200 OK):**
-
-```json
-[
-  {
-    "carreraId": 1,
-    "facultadId": 1,
-    "nombreFacultad": "Facultad de Ingeniería",
-    "nombre": "Ingeniería de Sistemas",
-    "descripcion": "Carrera profesional enfocada en desarrollo de software",
-    "duracionSemestres": 10,
-    "tituloOtorgado": "Ingeniero de Sistemas",
-    "fechaRegistro": "2025-01-15T10:30:00",
+    "fechaRegistro": "2025-01-15T08:00:00",
     "activo": true
   }
 ]
-```
 
-#### Obtener carreras por facultad
-
-```http
-GET /carreras/facultad/{facultadId}
-```
-
-**Parámetros:**
-- `facultadId` (path): ID de la facultad
-
-#### Obtener carrera por ID
-
-```http
-GET /carreras/{id}
-```
-
-#### Crear nueva carrera
-
-```http
-POST /carreras
+# Crear facultad
+POST /api/v1/matriculas/facultades
+Authorization: Bearer {token}
 Content-Type: application/json
+
+{
+  "nombre": "Facultad de Ciencias",
+  "descripcion": "Facultad enfocada en ciencias básicas",
+  "ubicacion": "Pabellón B",
+  "decano": "Dra. María González",
+  "activo": true
+}
+
+# Actualizar facultad
+PUT /api/v1/matriculas/facultades/1
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "nombre": "Facultad de Ingeniería",
+  "descripcion": "Descripción actualizada",
+  "ubicacion": "Nueva ubicación",
+  "decano": "Nuevo decano",
+  "activo": true
+}
+
+# Eliminar facultad (soft delete)
+DELETE /api/v1/matriculas/facultades/1
+Authorization: Bearer {token}
 ```
 
-**Body:**
+#### Gestión de Carreras
 
-```json
+```http
+# Listar todas las carreras
+GET /api/v1/matriculas/carreras
+Authorization: Bearer {token}
+
+# Listar carreras por facultad
+GET /api/v1/matriculas/carreras/facultad/1
+Authorization: Bearer {token}
+
+# Crear carrera
+POST /api/v1/matriculas/carreras
+Authorization: Bearer {token}
+Content-Type: application/json
+
 {
   "facultadId": 1,
-  "nombre": "Ingeniería de Software",
-  "descripcion": "Carrera especializada en ingeniería de software",
+  "nombre": "Ingeniería de Sistemas",
+  "descripcion": "Desarrollo de software y sistemas",
   "duracionSemestres": 10,
-  "tituloOtorgado": "Ingeniero de Software",
+  "tituloOtorgado": "Ingeniero de Sistemas",
   "activo": true
 }
 ```
 
-**Validaciones:**
-- `facultadId`: Requerido, debe existir y estar activa
-- `nombre`: Requerido, entre 3 y 100 caracteres, único
-- `descripcion`: Opcional, máximo 500 caracteres
-- `duracionSemestres`: Requerido, entre 1 y 20
-- `tituloOtorgado`: Opcional, máximo 100 caracteres
-- `activo`: Opcional, por defecto `true`
+### Swagger/OpenAPI Documentation
 
-**Respuesta exitosa (201 Created):** Similar a GET carrera
+Cada microservicio expone su documentación Swagger:
 
-#### Actualizar carrera
+- **Auth Service**: http://localhost:8082/swagger-ui.html
+- **Matriculas Service**: http://localhost:8085/swagger-ui.html
+- **Audit Service**: http://localhost:8084/swagger-ui.html
 
-```http
-PUT /carreras/{id}
-Content-Type: application/json
+---
+
+## 🎨 Patrones de Diseño
+
+### Patrones de Arquitectura
+
+#### 1. **Microservices Architecture**
+División del sistema en servicios independientes, cada uno con su propia base de datos (Database per Service pattern).
+
+#### 2. **API Gateway Pattern**
+Punto de entrada único que enruta las peticiones a los microservicios correspondientes.
+
+#### 3. **Service Discovery Pattern**
+Eureka permite el registro dinámico y descubrimiento de servicios.
+
+#### 4. **Circuit Breaker Pattern** (Implícito con Spring Cloud)
+Protección contra fallos en cascada entre servicios.
+
+#### 5. **Event-Driven Architecture**
+Comunicación asíncrona mediante eventos (Kafka y RabbitMQ).
+
+#### 6. **Database per Service Pattern**
+Cada microservicio tiene su propia base de datos independiente.
+
+### Patrones de Diseño del Backend
+
+#### 1. **Layered Architecture**
+```
+Controllers → Services → Repositories → Entities
 ```
 
-#### Eliminar carrera (eliminación lógica)
-
-```http
-DELETE /carreras/{id}
-```
-
-### Documentación Interactiva
-
-Para explorar todos los endpoints de forma interactiva con Swagger UI:
-
-```
-http://localhost:8080/api/v1/swagger-ui.html
-```
-
-## Estructura del Proyecto
-
-```
-university-enrollment-system/
-├── Backend/
-│   └── API-matriculas/
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── java/com/springback/apimatriculas/
-│       │   │   │   ├── controller/
-│       │   │   │   │   ├── CarreraController.java
-│       │   │   │   │   └── FacultadController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── interfaces/
-│       │   │   │   │   │   ├── ICarreraService.java
-│       │   │   │   │   │   └── IFacultadService.java
-│       │   │   │   │   └── impl/
-│       │   │   │   │       ├── CarreraServiceImpl.java
-│       │   │   │   │       └── FacultadServiceImpl.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   ├── CarreraRepository.java
-│       │   │   │   │   └── FacultadRepository.java
-│       │   │   │   ├── domain/model/
-│       │   │   │   │   ├── Carrera.java
-│       │   │   │   │   └── Facultad.java
-│       │   │   │   ├── dto/
-│       │   │   │   │   ├── request/
-│       │   │   │   │   │   ├── CarreraRequestDTO.java
-│       │   │   │   │   │   └── FacultadRequestDTO.java
-│       │   │   │   │   ├── response/
-│       │   │   │   │   │   ├── CarreraResponseDTO.java
-│       │   │   │   │   │   └── FacultadResponseDTO.java
-│       │   │   │   │   └── mapper/
-│       │   │   │   │       ├── CarreraMapper.java
-│       │   │   │   │       └── FacultadMapper.java
-│       │   │   │   ├── exception/
-│       │   │   │   │   ├── custom/
-│       │   │   │   │   │   ├── ResourceNotFoundException.java
-│       │   │   │   │   │   ├── DuplicateResourceException.java
-│       │   │   │   │   │   └── BusinessRuleException.java
-│       │   │   │   │   ├── ErrorResponse.java
-│       │   │   │   │   └── GlobalExceptionHandler.java
-│       │   │   │   ├── config/
-│       │   │   │   │   ├── OpenApiConfig.java
-│       │   │   │   │   └── CorsConfig.java
-│       │   │   │   └── util/
-│       │   │   │       └── Constants.java
-│       │   │   └── resources/
-│       │   │       ├── application.properties
-│       │   │       └── db/migration/
-│       │   │           ├── V1__create_tables.sql
-│       │   │           └── V2__insert_data.sql
-│       │   └── test/
-│       ├── Dockerfile
-│       ├── pom.xml
-│       └── README.md
-├── Frontend/
-│   ├── src/
-│   │   ├── features/
-│   │   │   ├── carreras/
-│   │   │   │   ├── components/
-│   │   │   │   │   ├── CarreraForm.tsx
-│   │   │   │   │   ├── CarreraList.tsx
-│   │   │   │   │   └── CarreraCard.tsx
-│   │   │   │   ├── hooks/
-│   │   │   │   │   └── useCarreraActions.ts
-│   │   │   │   ├── store/
-│   │   │   │   │   └── carreraStore.ts
-│   │   │   │   └── CarrerasPage.tsx
-│   │   │   └── facultades/
-│   │   │       ├── components/
-│   │   │       │   ├── FacultadForm.tsx
-│   │   │       │   ├── FacultadList.tsx
-│   │   │       │   └── FacultadCard.tsx
-│   │   │       ├── hooks/
-│   │   │       │   └── useFacultadActions.ts
-│   │   │       ├── store/
-│   │   │       │   └── facultadStore.ts
-│   │   │       └── FacultadesPage.tsx
-│   │   ├── shared/
-│   │   │   ├── components/
-│   │   │   │   ├── Button.tsx
-│   │   │   │   ├── Modal.tsx
-│   │   │   │   └── LoadingSpinner.tsx
-│   │   │   ├── config/
-│   │   │   │   └── api.config.ts
-│   │   │   └── types/
-│   │   │       └── index.ts
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── index.css
-│   ├── public/
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── README.md
-├── docker-compose.yml
-├── .env.example
-├── .env
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
-## Configuración Avanzada
-
-### Variables de Entorno del Backend
-
-El archivo `Backend/API-matriculas/src/main/resources/application.properties` utiliza las siguientes variables:
-
-```properties
-# Servidor
-SERVER_PORT=8080                           # Puerto del servidor
-SERVER_CONTEXT_PATH=/api/v1                # Contexto de la aplicación
-
-# Base de datos
-DB_HOST=localhost                          # Host de PostgreSQL
-DB_PORT=5432                               # Puerto de PostgreSQL
-DB_NAME=matriculas_db                      # Nombre de la base de datos
-DB_USERNAME=postgres                       # Usuario de la base de datos
-DB_PASSWORD=admin                          # Contraseña de la base de datos
-
-# Pool de conexiones
-DB_POOL_MAX_SIZE=10                        # Tamaño máximo del pool
-DB_POOL_MIN_IDLE=5                         # Conexiones mínimas inactivas
-DB_POOL_TIMEOUT=30000                      # Timeout de conexión (ms)
-
-# JPA/Hibernate
-JPA_DDL_AUTO=update                        # Estrategia DDL: update/create/validate
-JPA_SHOW_SQL=true                          # Mostrar SQL en logs
-JPA_FORMAT_SQL=true                        # Formatear SQL en logs
-
-# Logging
-LOG_LEVEL_ROOT=INFO                        # Nivel de log raíz
-LOG_LEVEL_APP=DEBUG                        # Nivel de log de la aplicación
-LOG_LEVEL_WEB=DEBUG                        # Nivel de log web
-LOG_LEVEL_SQL=DEBUG                        # Nivel de log SQL
-
-# Actuator
-ACTUATOR_ENDPOINTS=health,info,metrics     # Endpoints expuestos
-ACTUATOR_SHOW_DETAILS=always               # Mostrar detalles de health
-
-# Aplicación
-APP_NAME=API Sistema de Matrículas         # Nombre de la aplicación
-APP_VERSION=1.0.0                          # Versión de la aplicación
-APP_TIMEZONE=America/Lima                  # Zona horaria
-
-# Swagger
-SWAGGER_ENABLED=true                       # Habilitar Swagger UI
-SWAGGER_PATH=/swagger-ui.html              # Ruta de Swagger UI
-```
-
-### Variables de Entorno del Frontend
-
-El archivo `Frontend/.env` utiliza:
-
-```env
-VITE_API_BASE_URL=http://localhost:8080/api/v1  # URL base del backend
-VITE_DEV_PORT=5173                               # Puerto de desarrollo
-VITE_APP_MODE=development                        # Modo de la aplicación
-VITE_APP_NAME=Sistema de Matrículas              # Nombre de la aplicación
-VITE_APP_VERSION=1.0.0                           # Versión de la aplicación
-VITE_ENABLE_LOGS=true                            # Habilitar logs
-```
-
-### Configuración de Docker Compose
-
-El archivo `docker-compose.yml` orquesta los tres servicios:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: matriculas-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${DB_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-
-  backend:
-    build: Backend/matriculas-service
-    container_name: matriculas-backend
-    restart: unless-stopped
-    env_file: .env
-    ports:
-      - "${SERVER_PORT}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - app-network
-
-  frontend:
-    build:
-      context: ./Frontend
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-    container_name: matriculas-frontend
-    restart: unless-stopped
-    ports:
-      - "${VITE_DEV_PORT}:80"
-    depends_on:
-      - backend
-    networks:
-      - app-network
-
-volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge
-```
-
-**Características destacadas:**
-
-- **Health checks**: El backend espera a que PostgreSQL esté saludable antes de iniciar
-- **Restart policy**: Los contenedores se reinician automáticamente si fallan
-- **Named volumes**: Los datos de PostgreSQL persisten entre reinicios
-- **Custom network**: Los servicios se comunican en una red privada
-
-### Configuración de CORS
-
-El backend permite solicitudes desde el frontend mediante configuración CORS:
-
+#### 2. **Repository Pattern**
 ```java
-@Configuration
-public class CorsConfig {
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/v1/**")
-                    .allowedOrigins("http://localhost:5173")
-                    .allowedMethods("GET", "POST", "PUT", "DELETE")
-                    .allowedHeaders("*")
-                    .allowCredentials(true);
-            }
-        };
+@Repository
+public interface FacultadRepository extends JpaRepository<Facultad, Long> {
+    Optional<Facultad> findByNombre(String nombre);
+    List<Facultad> findByActivoTrue();
+}
+```
+
+#### 3. **DTO Pattern**
+```java
+public record FacultadRequestDTO(
+    @NotBlank String nombre,
+    @Size(max = 500) String descripcion,
+    String ubicacion,
+    String decano,
+    Boolean activo
+) {}
+```
+
+#### 4. **Service Layer Pattern**
+```java
+@Service
+@RequiredArgsConstructor
+public class FacultadServiceImpl implements IFacultadService {
+    private final FacultadRepository repository;
+    private final FacultadMapper mapper;
+    
+    @Transactional
+    public FacultadResponseDTO create(FacultadRequestDTO dto) {
+        // Business logic
     }
 }
 ```
 
-## Migración de Base de Datos
-
-El proyecto utiliza **Flyway** para gestionar las migraciones de base de datos de forma versionada y controlada.
-
-### Ubicación de las Migraciones
-
-```
-Backend/API-matriculas/src/main/resources/db/migration/
-├── V1__create_tables.sql      # Creación de tablas iniciales
-└── V2__insert_data.sql        # Datos de prueba iniciales
+#### 5. **Dependency Injection**
+```java
+@RequiredArgsConstructor // Constructor injection via Lombok
+public class AuthService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider tokenProvider;
+}
 ```
 
-### V1: Creación de Tablas
-
-```sql
--- Tabla FACULTAD
-CREATE TABLE IF NOT EXISTS facultad (
-    facultad_id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) UNIQUE NOT NULL,
-    descripcion TEXT,
-    ubicacion VARCHAR(100),
-    decano VARCHAR(100),
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    activo BOOLEAN DEFAULT TRUE
-);
-
--- Tabla CARRERA
-CREATE TABLE IF NOT EXISTS carrera (
-    carrera_id SERIAL PRIMARY KEY,
-    facultad_id INTEGER NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    descripcion TEXT,
-    duracion_semestres INTEGER NOT NULL,
-    titulo_otorgado VARCHAR(100),
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    activo BOOLEAN DEFAULT TRUE,
-    CONSTRAINT fk_facultad FOREIGN KEY (facultad_id) 
-        REFERENCES facultad(facultad_id) ON DELETE RESTRICT,
-    CONSTRAINT uk_carrera_nombre UNIQUE (nombre),
-    CONSTRAINT ck_duracion_semestres CHECK (duracion_semestres > 0)
-);
-
--- Índices para optimización
-CREATE INDEX idx_carrera_facultad ON carrera(facultad_id);
-CREATE INDEX idx_facultad_nombre ON facultad(nombre);
-CREATE INDEX idx_carrera_nombre ON carrera(nombre);
-CREATE INDEX idx_facultad_activo ON facultad(activo);
-CREATE INDEX idx_carrera_activo ON carrera(activo);
+#### 6. **Global Exception Handling**
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
+        // Error handling
+    }
+}
 ```
 
-**Características del esquema:**
+### Patrones de Comunicación
 
-- **Claves primarias**: IDs autoincrementales (SERIAL)
-- **Restricciones de integridad**: Foreign keys con ON DELETE RESTRICT
-- **Validaciones**: Checks para duracion_semestres > 0
-- **Índices**: Optimización para búsquedas frecuentes
-- **Soft delete**: Campo `activo` para eliminación lógica
-
-### V2: Datos de Prueba
-
-```sql
--- Inserción de 5 facultades
-INSERT INTO facultad (nombre, descripcion, ubicacion, decano, activo) VALUES
-    ('Facultad de Ingeniería', 'Facultad dedicada a la formación de ingenieros', 
-     'Pabellón A - Campus Principal', 'Dr. Juan Pérez Rodríguez', true),
-    ('Facultad de Ciencias', 'Facultad enfocada en ciencias básicas', 
-     'Pabellón B - Campus Principal', 'Dra. María González López', true),
-    -- ... más facultades
-;
-
--- Inserción de carreras por facultad
-INSERT INTO carrera (facultad_id, nombre, descripcion, duracion_semestres, 
-                     titulo_otorgado, activo) VALUES
-    (1, 'Ingeniería de Sistemas', 'Desarrollo de software y sistemas', 
-     10, 'Ingeniero de Sistemas', true),
-    (1, 'Ingeniería Industrial', 'Optimización de procesos industriales', 
-     10, 'Ingeniero Industrial', true),
-    -- ... más carreras
-;
+#### 1. **Synchronous Communication (REST)**
+```
+Client → Gateway → Service (via Eureka)
 ```
 
-### Crear Nueva Migración
+#### 2. **Asynchronous Communication (Event-Driven)**
 
-Para agregar una nueva migración:
-
-1. Crear archivo con el formato: `V{VERSION}__{descripcion}.sql`
-   - Ejemplo: `V3__add_estudiantes_table.sql`
-
-2. El número de versión debe ser secuencial
-
-3. Flyway ejecutará automáticamente la migración al iniciar el backend
-
-```sql
--- V3__add_estudiantes_table.sql
-CREATE TABLE IF NOT EXISTS estudiante (
-    estudiante_id SERIAL PRIMARY KEY,
-    codigo VARCHAR(20) UNIQUE NOT NULL,
-    nombres VARCHAR(100) NOT NULL,
-    apellidos VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    activo BOOLEAN DEFAULT TRUE
-);
+**Kafka (Auditoría):**
+```java
+@Service
+public class AuditEventPublisher {
+    private final KafkaTemplate<String, AuditEvent> kafkaTemplate;
+    
+    public void publishEvent(AuditEvent event) {
+        kafkaTemplate.send("audit.events", event);
+    }
+}
 ```
 
-### Verificar Estado de Migraciones
-
-Flyway mantiene un historial en la tabla `flyway_schema_history`:
-
-```sql
-SELECT version, description, installed_on, success 
-FROM flyway_schema_history 
-ORDER BY installed_rank;
+**RabbitMQ (Emails):**
+```java
+@Service
+public class EmailProducer {
+    private final RabbitTemplate rabbitTemplate;
+    
+    public void sendEmail(EmailMessage message) {
+        rabbitTemplate.convertAndSend("email.exchange", "email.routing.key", message);
+    }
+}
 ```
 
-## Modelo de Datos
+---
 
-### Diagrama Entidad-Relación
+## 📁 Estructura del Proyecto
 
 ```
-┌─────────────────────────────────┐
-│          FACULTAD               │
-├─────────────────────────────────┤
-│ PK facultad_id: SERIAL          │
-│    nombre: VARCHAR(100) UNIQUE  │
-│    descripcion: TEXT            │
-│    ubicacion: VARCHAR(100)      │
-│    decano: VARCHAR(100)         │
-│    fecha_registro: TIMESTAMP    │
-│    activo: BOOLEAN              │
-└────────────┬────────────────────┘
-             │
-             │ 1:N
-             │
-┌────────────▼────────────────────┐
-│           CARRERA               │
-├─────────────────────────────────┤
-│ PK carrera_id: SERIAL           │
-│ FK facultad_id: INTEGER         │
-│    nombre: VARCHAR(100) UNIQUE  │
-│    descripcion: TEXT            │
-│    duracion_semestres: INTEGER  │
-│    titulo_otorgado: VARCHAR(100)│
-│    fecha_registro: TIMESTAMP    │
-│    activo: BOOLEAN              │
-└─────────────────────────────────┘
+university-enrollment-system/
+│
+├── Backend/
+│   ├── pom.xml                           # Parent POM
+│   │
+│   ├── common-lib/                       # Shared utilities and DTOs
+│   │   ├── src/main/java/com/university/common/
+│   │   │   ├── dto/                      # Shared DTOs
+│   │   │   ├── util/                     # Utility classes
+│   │   │   └── constants/                # Constants
+│   │   └── pom.xml
+│   │
+│   ├── eureka-server/                    # Service Discovery
+│   │   ├── src/main/java/
+│   │   ├── src/main/resources/
+│   │   │   └── application.yml
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   │
+│   ├── api-gateway/                      # API Gateway
+│   │   ├── src/main/java/com/university/gateway/
+│   │   │   ├── config/
+│   │   │   │   ├── GatewayConfig.java
+│   │   │   │   ├── CorsConfig.java
+│   │   │   │   └── SecurityConfig.java
+│   │   │   ├── filter/
+│   │   │   │   └── JwtAuthenticationFilter.java
+│   │   │   └── ApiGatewayApplication.java
+│   │   ├── src/main/resources/
+│   │   │   └── application.yml           # Gateway routes
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   │
+│   ├── auth-service/                     # Authentication Service
+│   │   ├── src/main/java/com/university/auth/
+│   │   │   ├── controller/
+│   │   │   │   └── AuthController.java
+│   │   │   ├── service/
+│   │   │   │   ├── AuthService.java
+│   │   │   │   └── JwtTokenProvider.java
+│   │   │   ├── repository/
+│   │   │   │   └── UserRepository.java
+│   │   │   ├── model/
+│   │   │   │   ├── User.java
+│   │   │   │   └── Role.java
+│   │   │   ├── dto/
+│   │   │   │   ├── LoginRequest.java
+│   │   │   │   ├── RegisterRequest.java
+│   │   │   │   └── AuthResponse.java
+│   │   │   ├── config/
+│   │   │   │   ├── SecurityConfig.java
+│   │   │   │   └── KafkaProducerConfig.java
+│   │   │   └── event/
+│   │   │       └── UserRegisteredEvent.java
+│   │   ├── src/main/resources/
+│   │   │   └── application.yml
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   │
+│   ├── matriculas-service/               # Business Logic Service
+│   │   ├── src/main/java/com/university/matriculas/
+│   │   │   ├── controller/
+│   │   │   │   ├── FacultadController.java
+│   │   │   │   └── CarreraController.java
+│   │   │   ├── service/
+│   │   │   │   ├── FacultadService.java
+│   │   │   │   └── CarreraService.java
+│   │   │   ├── repository/
+│   │   │   │   ├── FacultadRepository.java
+│   │   │   │   └── CarreraRepository.java
+│   │   │   ├── model/
+│   │   │   │   ├── Facultad.java
+│   │   │   │   └── Carrera.java
+│   │   │   ├── dto/
+│   │   │   │   ├── FacultadRequestDTO.java
+│   │   │   │   ├── FacultadResponseDTO.java
+│   │   │   │   ├── CarreraRequestDTO.java
+│   │   │   │   └── CarreraResponseDTO.java
+│   │   │   ├── mapper/
+│   │   │   │   ├── FacultadMapper.java
+│   │   │   │   └── CarreraMapper.java
+│   │   │   ├── config/
+│   │   │   │   ├── KafkaProducerConfig.java
+│   │   │   │   └── RabbitMQConfig.java
+│   │   │   └── event/
+│   │   │       ├── FacultadCreatedEvent.java
+│   │   │       └── CarreraCreatedEvent.java
+│   │   ├── src/main/resources/
+│   │   │   ├── application.yml
+│   │   │   └── db/migration/
+│   │   │       ├── V1__create_tables.sql
+│   │   │       └── V2__insert_data.sql
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   │
+│   ├── email-service/                    # Email Notification Service
+│   │   ├── src/main/java/com/university/email/
+│   │   │   ├── consumer/
+│   │   │   │   └── EmailConsumer.java
+│   │   │   ├── service/
+│   │   │   │   └── EmailService.java
+│   │   │   ├── dto/
+│   │   │   │   └── EmailMessage.java
+│   │   │   ├── config/
+│   │   │   │   └── RabbitMQConfig.java
+│   │   │   └── template/
+│   │   │       └── EmailTemplateService.java
+│   │   ├── src/main/resources/
+│   │   │   ├── application.yml
+│   │   │   └── templates/
+│   │   │       ├── welcome.html
+│   │   │       └── notification.html
+│   │   ├── Dockerfile
+│   │   └── pom.xml
+│   │
+│   └── audit-service/                    # Audit & Logging Service
+│       ├── src/main/java/com/university/audit/
+│       │   ├── consumer/
+│       │   │   └── AuditEventConsumer.java
+│       │   ├── service/
+│       │   │   └── AuditService.java
+│       │   ├── repository/
+│       │   │   └── AuditLogRepository.java
+│       │   ├── model/
+│       │   │   └── AuditLog.java
+│       │   ├── dto/
+│       │   │   └── AuditEvent.java
+│       │   └── config/
+│       │       └── KafkaConsumerConfig.java
+│       ├── src/main/resources/
+│       │   └── application.yml
+│       ├── Dockerfile
+│       └── pom.xml
+│
+├── Frontend/
+│   ├── src/
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   │   ├── components/
+│   │   │   │   ├── hooks/
+│   │   │   │   ├── store/
+│   │   │   │   └── pages/
+│   │   │   ├── facultades/
+│   │   │   │   ├── components/
+│   │   │   │   ├── hooks/
+│   │   │   │   ├── store/
+│   │   │   │   └── FacultadesPage.tsx
+│   │   │   └── carreras/
+│   │   │       ├── components/
+│   │   │       ├── hooks/
+│   │   │       ├── store/
+│   │   │       └── CarrerasPage.tsx
+│   │   ├── shared/
+│   │   │   ├── components/
+│   │   │   ├── config/
+│   │   │   │   └── api.config.ts
+│   │   │   ├── types/
+│   │   │   └── utils/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── docker-compose.yml                    # Orchestration
+├── .env                                  # Environment variables
+├── .env.example                          # Example env file
+├── .gitignore
+├── README.md                             # This file
+└── LICENSE
 ```
 
-### Relaciones
+---
 
-- Una **Facultad** puede tener muchas **Carreras** (1:N)
-- Una **Carrera** pertenece a una única **Facultad**
-- La eliminación de una Facultad está restringida si tiene Carreras asociadas (ON DELETE RESTRICT)
-
-## Testing
-
-### Backend
-
-Ejecutar tests unitarios y de integración:
-
-```bash
-cd Backend/API-matriculas
-mvn test
-```
-
-Ejecutar tests con cobertura:
-
-```bash
-mvn clean test jacoco:report
-```
-
-El reporte de cobertura se genera en: `target/site/jacoco/index.html`
-
-### Frontend
-
-Ejecutar tests:
-
-```bash
-cd Frontend
-npm test
-```
-
-Ejecutar tests con cobertura:
-
-```bash
-npm run test:coverage
-```
-
-## Seguridad
-
-### Validaciones
-
-**Backend:**
-- Bean Validation (JSR-380) en DTOs
-- Validaciones de negocio en la capa de servicio
-- SQL injection prevention mediante JPA/Hibernate prepared statements
-
-**Frontend:**
-- Validación de formularios en tiempo real
-- Sanitización de inputs del usuario
-- TypeScript para type safety
-
-### Headers de Seguridad
-
-El backend configura headers HTTP seguros:
-
-```properties
-# application.properties
-server.servlet.encoding.charset=UTF-8
-server.servlet.encoding.enabled=true
-server.servlet.encoding.force=true
-```
-
-### HTTPS (Producción)
-
-Para producción, se recomienda:
-
-1. Configurar SSL/TLS en el servidor
-2. Usar un reverse proxy (Nginx, Apache)
-3. Implementar rate limiting
-4. Agregar autenticación y autorización (Spring Security + JWT)
-
-## Monitoreo
+## 📊 Monitoreo y Observabilidad
 
 ### Actuator Endpoints
 
-El backend expone endpoints de monitoreo:
+Cada microservicio expone endpoints de Actuator para monitoreo:
 
 ```bash
 # Health check
-curl http://localhost:8080/api/v1/actuator/health
+GET /actuator/health
 
-# Información de la aplicación
-curl http://localhost:8080/api/v1/actuator/info
+# Metrics
+GET /actuator/metrics
 
-# Métricas
-curl http://localhost:8080/api/v1/actuator/metrics
+# Info
+GET /actuator/info
+
+# Prometheus (si está habilitado)
+GET /actuator/prometheus
+```
+
+### Eureka Dashboard
+
+Accede al dashboard de Eureka para ver todos los servicios registrados y su estado:
+
+```
+http://localhost:8761
+```
+
+### RabbitMQ Management Console
+
+Monitorea colas, exchanges y mensajes:
+
+```
+http://localhost:15672
+Username: admin
+Password: admin123
+```
+
+### Kafka UI
+
+Visualiza topics, particiones y mensajes de Kafka:
+
+```
+http://localhost:8090
 ```
 
 ### Logs
 
-**Backend:**
 ```bash
-# Ver logs en Docker
-docker-compose logs -f backend
+# Ver logs de todos los servicios
+docker-compose logs -f
 
-# Archivo de logs (instalación local)
-tail -f logs/spring-boot-application.log
+# Ver logs de un servicio específico
+docker-compose logs -f auth-service
+
+# Seguir logs en tiempo real
+docker-compose logs -f --tail=100 matriculas-service
 ```
 
-**Frontend:**
+---
+
+## 🐛 Troubleshooting
+
+### Problema: Servicios no se registran en Eureka
+
+**Síntomas:**
+- Los servicios no aparecen en el dashboard de Eureka
+- Gateway no puede enrutar peticiones
+
+**Solución:**
 ```bash
-# Ver logs en Docker
-docker-compose logs -f frontend
+# 1. Verificar que Eureka esté corriendo
+docker-compose logs eureka-server
 
-# Logs del navegador
-# Abrir DevTools (F12) → Console
+# 2. Verificar configuración de Eureka en cada servicio
+# application.yml debe tener:
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# 3. Reiniciar servicios
+docker-compose restart auth-service matriculas-service
 ```
 
-## Performance
+### Problema: Kafka Deserialization Error
 
-### Optimizaciones Backend
-
-1. **Índices de base de datos** en columnas frecuentemente consultadas
-2. **Connection pooling** con HikariCP
-3. **Lazy loading** de relaciones JPA
-4. **Query optimization** con Spring Data JPA
-5. **Caching** (preparado para Redis/Caffeine)
-
-### Optimizaciones Frontend
-
-1. **Code splitting** automático con Vite
-2. **Lazy loading** de componentes
-3. **Optimización de bundle** con tree-shaking
-4. **Minificación** en producción
-5. **Caching** de requests HTTP
-
-## Troubleshooting
-
-### Backend no inicia
-
-**Problema:** Error de conexión a base de datos
-
+**Síntomas:**
 ```
-Solución:
-1. Verificar que PostgreSQL esté corriendo
-2. Revisar credenciales en .env
-3. Comprobar que el puerto 5432 esté disponible
-4. Verificar logs: docker-compose logs postgres
+ClassNotFoundException: com.university.auth.dto.UserRegisteredEvent
 ```
 
-**Problema:** Puerto 8080 en uso
+**Solución:**
+Ya está resuelto en la configuración actual. Verificar que:
+```yaml
+# Producer (Auth/Matriculas Service)
+spring:
+  kafka:
+    producer:
+      properties:
+        spring.json.add.type.headers: false
 
-```
-Solución:
-1. Cambiar SERVER_PORT en .env
-2. Actualizar VITE_API_BASE_URL en frontend
-3. Reiniciar servicios: docker-compose restart
-```
-
-### Frontend no carga
-
-**Problema:** Error de CORS
-
-```
-Solución:
-1. Verificar VITE_API_BASE_URL en .env
-2. Confirmar que backend está corriendo
-3. Revisar CorsConfig.java para allowed origins
-```
-
-**Problema:** Puerto 5173 en uso
-
-```
-Solución:
-1. Cambiar VITE_DEV_PORT en .env
-2. Reiniciar frontend: docker-compose restart frontend
+# Consumer (Audit Service)
+spring:
+  kafka:
+    consumer:
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.university.auditservice.dto.AuditEvent
 ```
 
-### Base de datos
+### Problema: Gateway devuelve 404
 
-**Problema:** Migraciones de Flyway fallan
+**Síntomas:**
+- Peticiones a través del Gateway fallan con 404
+- Acceso directo al servicio funciona
 
+**Solución:**
+```bash
+# 1. Verificar que el servicio esté registrado en Eureka
+curl http://localhost:8761/eureka/apps
+
+# 2. Verificar rutas del Gateway
+# application.yml del Gateway debe tener StripPrefix correcto
+- id: auth-service
+  uri: lb://auth-service
+  predicates:
+    - Path=/api/v1/auth/**
+  filters:
+    - StripPrefix=2  # Elimina /api/v1
+
+# 3. Verificar context-path del servicio
+# application.yml del servicio:
+server:
+  servlet:
+    context-path: ""  # Debe estar vacío o coincidir con StripPrefix
 ```
-Solución:
-1. Revisar logs: docker-compose logs backend
-2. Verificar sintaxis SQL en archivos de migración
-3. Restaurar estado limpio:
-   docker-compose down -v
-   docker-compose up -d
+
+### Problema: Emails no se envían
+
+**Síntomas:**
+- Los usuarios no reciben emails de bienvenida
+- RabbitMQ muestra mensajes no procesados
+
+**Solución:**
+```bash
+# 1. Verificar configuración SMTP
+docker-compose logs email-service
+
+# 2. Activar modo simulación para pruebas
+EMAIL_SIMULATION_MODE=true
+
+# 3. Verificar credenciales de Gmail
+# Generar App Password en:
+# https://myaccount.google.com/apppasswords
+
+# 4. Verificar queue en RabbitMQ
+http://localhost:15672 → Queues → email.queue
 ```
 
-**Problema:** Datos no persisten
+### Problema: Base de datos no se inicializa
 
+**Síntomas:**
 ```
-Solución:
-1. Verificar que el volumen postgres_data exista
-2. No usar flag -v al hacer docker-compose down
-3. Backup de datos antes de operaciones destructivas
+Relation "facultad" does not exist
 ```
 
-## Contribución
+**Solución:**
+```bash
+# 1. Verificar que Flyway esté configurado
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
 
-1. Fork el repositorio
-2. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
-3. Commit tus cambios: `git commit -m 'Agregar nueva funcionalidad'`
-4. Push a la rama: `git push origin feature/nueva-funcionalidad`
-5. Abrir un Pull Request
+# 2. O usar JPA DDL auto
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+# 3. Eliminar y recrear volúmenes
+docker-compose down -v
+docker-compose up -d
+```
+
+### Problema: Puerto en uso
+
+**Síntomas:**
+```
+Bind for 0.0.0.0:8080 failed: port is already allocated
+```
+
+**Solución:**
+```bash
+# Opción 1: Detener el proceso que usa el puerto
+# Windows
+netstat -ano | findstr :8080
+taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -ti:8080 | xargs kill -9
+
+# Opción 2: Cambiar puerto en .env
+GATEWAY_PORT=8081
+```
+
+---
+
+## 🗺️ Roadmap
+
+### Versión 1.1 (Q1 2026)
+- [ ] Módulo de Estudiantes
+- [ ] Sistema de Matrículas
+- [ ] Gestión de Periodos Académicos
+- [ ] Tests unitarios y de integración
+- [ ] CI/CD pipeline con GitHub Actions
+
+### Versión 1.2 (Q2 2026)
+- [ ] Módulo de Docentes
+- [ ] Asignación de Horarios
+- [ ] Sistema de Calificaciones
+- [ ] Reportes y Dashboards
+- [ ] Notificaciones push
+
+### Versión 2.0 (Q3 2026)
+- [ ] Módulo de Pagos
+- [ ] Integración con pasarelas de pago
+- [ ] Sistema de Becas
+- [ ] API pública con rate limiting
+- [ ] Aplicación móvil (React Native)
+
+### Mejoras Técnicas
+- [ ] Implementar Resilience4j (Circuit Breaker)
+- [ ] Distributed Tracing con Sleuth y Zipkin
+- [ ] Migración a Kubernetes
+- [ ] Implementar GraphQL como alternativa a REST
+- [ ] Cache distribuido con Redis
+- [ ] Implementar SAGA pattern para transacciones distribuidas
+
+---
+
+## 🤝 Contribuir
+
+¡Las contribuciones son bienvenidas! Por favor, sigue estos pasos:
+
+### 1. Fork el Proyecto
+
+```bash
+git clone https://github.com/tu-usuario/university-enrollment-system.git
+cd university-enrollment-system
+```
+
+### 2. Crear una Rama
+
+```bash
+git checkout -b feature/nueva-funcionalidad
+```
+
+### 3. Realizar Cambios
+
+```bash
+git add .
+git commit -m "feat: agregar nueva funcionalidad X"
+```
+
+### 4. Push y Pull Request
+
+```bash
+git push origin feature/nueva-funcionalidad
+```
+
+Luego abre un Pull Request en GitHub.
 
 ### Estándares de Código
 
-**Backend:**
+**Backend (Java):**
 - Seguir convenciones de Java (camelCase, PascalCase)
 - Usar Lombok para reducir boilerplate
-- Documentar métodos públicos con Javadoc
-- Mantener cobertura de tests > 80%
+- Documentar con Javadoc métodos públicos
+- Escribir tests unitarios (JUnit 5)
+- Cobertura mínima: 80%
 
-**Frontend:**
-- Seguir convenciones de TypeScript
+**Frontend (TypeScript):**
+- Seguir convenciones de React y TypeScript
 - Usar functional components y hooks
-- Mantener componentes pequeños y reutilizables
-- Escribir tests para lógica crítica
+- Componentes pequeños y reutilizables
+- Escribir tests con Vitest
 
-## Roadmap
+**Commits:**
+Seguir [Conventional Commits](https://www.conventionalcommits.org/):
+```
+feat: nueva característica
+fix: corrección de bug
+docs: cambios en documentación
+style: formateo de código
+refactor: refactorización
+test: agregar tests
+chore: tareas de mantenimiento
+```
 
-### Versión 1.1
+---
 
-- Autenticación y autorización con Spring Security + JWT
-- Sistema de roles (Admin, Coordinador, Estudiante)
-- Módulo de estudiantes y matrículas
-
-### Versión 1.2
-
-- Generación de reportes en PDF
-- Dashboard con estadísticas
-- Notificaciones por email
-
-### Versión 2.0
-
-- Sistema de calificaciones
-- Módulo de pagos
-- Aplicación móvil (React Native)
-
-## Licencia
+## 📄 Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
 
@@ -1423,29 +1449,83 @@ Copyright (c) 2025 Tunkifloo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
-
-## Autor
-
-**Tunkifloo**
-
-- GitHub: [@Tunkifloo](https://github.com/Tunkifloo)
-- Proyecto: [university-enrollment-system](https://github.com/Tunkifloo/university-enrollment-system)
-
-## Agradecimientos
-
-- Spring Framework Team
-- React Team
-- PostgreSQL Global Development Group
-- Comunidad Open Source
-
-## Soporte
-
-Para reportar bugs o solicitar features, por favor abre un issue en:
-https://github.com/Tunkifloo/university-enrollment-system/issues
 
 ---
 
-**Última actualización:** Octubre 2025  
-**Versión:** 1.0.0
+## 👨‍💻 Autores
+
+- **Adrian Cisneros Bartra**
+- **Jhoel Maqui Saldaña**
+
+---
+
+- GitHub: [@Tunkifloo](https://github.com/Tunkifloo)
+- Proyecto: [university-enrollment-system](https://github.com/Tunkifloo/university-enrollment-system)
+- Email: nicolocisneros@gmail.com
+---
+- GitHub: [@JhoneiroLove](https://github.com/JhoneiroLove)
+- Proyecto: [university-enrollment-system](https://github.com/Tunkifloo/university-enrollment-system)
+- Email: jhoneiro12@hotmail.com
+
+---
+
+## 🙏 Agradecimientos
+
+- **Spring Team** - Framework Spring Boot y Spring Cloud
+- **Netflix OSS** - Eureka Server
+- **Apache Software Foundation** - Kafka
+- **Pivotal** - RabbitMQ
+- **PostgreSQL Global Development Group** - PostgreSQL
+- **React Team** - React y ecosystem
+- **Comunidad Open Source** - Por todas las herramientas increíbles
+
+---
+
+## 📞 Soporte
+
+Para reportar bugs, solicitar features o hacer preguntas:
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Tunkifloo/university-enrollment-system/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Tunkifloo/university-enrollment-system/discussions)
+- 📧 **Email**: nicolocisneros@gmail.com
+- 📧 **Email**: jhoneiro12@hotmail.com
+
+---
+
+## 📈 Estadísticas del Proyecto
+
+![GitHub stars](https://img.shields.io/github/stars/Tunkifloo/university-enrollment-system?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Tunkifloo/university-enrollment-system?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/Tunkifloo/university-enrollment-system?style=social)
+
+---
+
+<div align="center">
+
+**⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub ⭐**
+
+[⬆ Volver arriba](#sistema-de-matrículas-universitarias---arquitectura-de-microservicios)
+
+---
+
+**Hecho por [Tunkifloo](https://github.com/Tunkifloo)**
+
+**Última actualización:** Noviembre 2025 | **Versión:** 1.0.0
+
+</div>
