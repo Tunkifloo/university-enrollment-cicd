@@ -14,10 +14,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns:
-              - "http://localhost:5173"
-              - "http://localhost:80"
-              - "http://localhost"
+            allowedOriginPatterns: "*"
             allowedMethods:
               - GET
               - POST
@@ -25,14 +22,7 @@ spring:
               - DELETE
               - OPTIONS
               - PATCH
-            allowedHeaders:
-              - Authorization
-              - Content-Type
-              - Accept
-              - Origin
-              - X-Requested-With
-            exposedHeaders:
-              - Authorization
+            allowedHeaders: "*"
             allowCredentials: true
             maxAge: 3600
 
