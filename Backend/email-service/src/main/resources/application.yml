@@ -27,6 +27,22 @@ spring:
         acknowledge-mode: auto
         prefetch: 1
 
+  # CONFIGURACIÓN DE EMAIL
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:gptseek011@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:xxql qjqq qpdl buko}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+
 # EUREKA CLIENT
 eureka:
   client:
@@ -46,17 +62,15 @@ rabbitmq:
 # EMAIL CONFIGURATION
 email:
   enabled: ${EMAIL_ENABLED:true}
-  simulation-mode: ${EMAIL_SIMULATION_MODE:true}
+  simulation-mode: ${EMAIL_SIMULATION_MODE:false}
 
-# SMTP Configuration (para cuando simulation-mode = false)
 smtp:
-  host: ${SMTP_HOST:smtp.gmail.com}
-  port: ${SMTP_PORT:587}
-  username: ${SMTP_USERNAME:noreply@university.com}
-  password: ${SMTP_PASSWORD:change-me}
-  auth: ${SMTP_AUTH:true}
-  starttls:
-    enable: ${SMTP_STARTTLS_ENABLE:true}
+  from: ${SMTP_FROM:gptseek011@gmail.com}
+
+# Admin email for notifications
+app:
+  notification:
+    admin-email: ${APP_NOTIFICATION_ADMIN_EMAIL:gptseek011@gmail.com}
 
 # ACTUATOR
 management:
@@ -74,3 +88,4 @@ logging:
     root: ${LOGGING_LEVEL_ROOT:INFO}
     com.university.email: ${LOGGING_LEVEL_APP:DEBUG}
     org.springframework.amqp: ${LOGGING_LEVEL_RABBITMQ:INFO}
+    org.springframework.mail: DEBUG

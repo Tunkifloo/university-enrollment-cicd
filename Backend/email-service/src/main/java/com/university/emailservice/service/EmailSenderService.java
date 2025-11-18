@@ -3,6 +3,8 @@ package com.university.emailservice.service;
 import com.university.emailservice.dto.EmailMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -12,10 +14,27 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class EmailSenderService {
 
+    private final JavaMailSender mailSender;
+
     @Value("${email.simulation-mode:true}")
     private boolean simulationMode;
 
+    @Value("${email.enabled:true}")
+    private boolean emailEnabled;
+
+    @Value("${smtp.from:noreply@university.com}")
+    private String fromEmail;
+
+    public EmailSenderService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
+
     public void sendEmail(EmailMessage message) {
+        if (!emailEnabled) {
+            log.info("Email deshabilitado. No se envió email a: {}", message.getTo());
+            return;
+        }
+
         if (simulationMode) {
             simulateEmailSending(message);
         } else {
@@ -43,7 +62,20 @@ public class EmailSenderService {
     }
 
     private void sendRealEmail(EmailMessage message) {
-        log.warn("Envío real de emails no implementado aún. Usando simulación.");
-        simulateEmailSending(message);
+        try {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(fromEmail);
+            mailMessage.setTo(message.getTo());
+            mailMessage.setSubject(message.getSubject());
+            mailMessage.setText(message.getBody());
+
+            mailSender.send(mailMessage);
+
+            log.info("✅ Email REAL enviado exitosamente a: {}", message.getTo());
+        } catch (Exception e) {
+            log.error("🚨 Error enviando email real a {}: {}", message.getTo(), e.getMessage());
+            // Fallback a simulación
+            simulateEmailSending(message);
+        }
     }
 }
