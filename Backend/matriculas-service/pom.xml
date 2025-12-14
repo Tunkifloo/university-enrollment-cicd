@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.spring-back</groupId>
     <artifactId>matriculas-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>Matriculas Service</name>
     <description>Service de matriculas Universitarias</description>
     <url/>
