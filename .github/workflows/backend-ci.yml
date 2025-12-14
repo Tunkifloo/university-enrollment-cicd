@@ -1,4 +1,4 @@
-name: CI Backend & SonarQube Local
+name: CI Backend (Tests + Sonar)
 
 on:
   workflow_dispatch:
@@ -14,8 +14,8 @@ on:
       - 'Backend/**'
 
 jobs:
-  build-and-analyze:
-    name: Build & Analyze (Local)
+  build-test-analyze:
+    name: Build, Test & Quality
     runs-on: ubuntu-latest
 
     steps:
@@ -30,56 +30,43 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Install Common Lib
+      - name: 1. Install Common Lib
         run: |
           echo "Installing Common Lib..."
           cd Backend/common-lib
           mvn clean install -DskipTests
           cd ../..
 
-      - name: SonarQube Scan & Tests
+      - name: 2. Run Tests
         env:
-          # --- Secretos de Infraestructura CI ---
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-          # --- Variables de Aplicación ---
-          # Seguridad
           JWT_SECRET: "secreto_temporal_para_ci_testing_1234567890"
           JWT_EXPIRATION: "3600000"
-
-          # Bases de Datos
           POSTGRES_USER: "postgres"
           POSTGRES_PASSWORD: "password_test"
           AUTH_DB_NAME: "auth_db_test"
           AUDIT_DB_NAME: "audit_db_test"
           MATRICULAS_DB_NAME: "matriculas_db_test"
           SPRING_DATASOURCE_URL_AUTH: "jdbc:postgresql://localhost:5432/auth_db_test"
-
-          # Brokers (RabbitMQ & Kafka)
           SPRING_RABBITMQ_HOST: "localhost"
-          SPRING_RABBITMQ_PORT: "5672"
-          SPRING_RABBITMQ_USERNAME: "guest"
-          SPRING_RABBITMQ_PASSWORD: "guest"
           SPRING_KAFKA_BOOTSTRAP_SERVERS: "localhost:9092"
-
-          # Nombres de Colas y Tópicos
-          RABBITMQ_EMAIL_QUEUE: "email.queue"
-          RABBITMQ_EMAIL_EXCHANGE: "email.exchange"
-          RABBITMQ_EMAIL_ROUTING_KEY: "email.routing.key"
-          KAFKA_AUDIT_TOPIC: "audit-topic"
-          KAFKA_USER_REGISTERED_TOPIC: "user-registered"
-
-          # Configuración Eureka
           EUREKA_CLIENT_ENABLED: "false"
           EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
           EUREKA_CLIENT_FETCH_REGISTRY: "false"
           EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://localhost:8761/eureka/"
-
         run: |
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn -B clean verify \
+            -DfailIfNoTests=false \
+            -Dmaven.test.failure.ignore=false
+
+      - name: 3. SonarQube Analysis
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn -B sonar:sonar \
+            -DskipTests \
             -Dsonar.projectKey=university-enrollment \
             -Dsonar.projectName='University Enrollment' \
-            -Dsonar.qualitygate.wait=true \
-            -DfailIfNoTests=false
+            -Dsonar.qualitygate.wait=true
