@@ -2,11 +2,11 @@ name: CI Backend & SonarQube Local
 
 on:
   workflow_dispatch:
-
   push:
     branches: [ main, master ]
     paths:
       - 'Backend/**'
+      - 'pom.xml'
       - '.github/workflows/**'
   pull_request:
     branches: [ main, master ]
@@ -17,14 +17,12 @@ jobs:
   build-and-analyze:
     name: Build & Analyze (Local)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./Backend
+
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Necesario para que SonarQube analice el historial
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,15 +31,13 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # Instalar la librería común primero
       - name: Install Common Lib
         run: |
           echo "Installing Common Lib..."
-          cd common-lib
+          cd Backend/common-lib  # <-- Ruta ajustada
           mvn clean install -DskipTests
-          cd ..
+          cd ../..               # <-- Volvemos a la raíz
 
-      # Análisis, conexión via Ngrok
       - name: SonarQube Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
