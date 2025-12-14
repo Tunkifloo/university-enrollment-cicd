@@ -10,6 +10,9 @@ volumes:
   rabbitmq_data:
   kafka_data:
   zookeeper_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
 
 services:
   # ==================== BASES DE DATOS ====================
@@ -388,5 +391,21 @@ services:
     depends_on:
       api-gateway:
         condition: service_started
+    networks:
+      - university-network
+
+  # ==================== CODE QUALITY ====================
+  sonarqube:
+    image: sonarqube:community
+    container_name: university-system-sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
     networks:
       - university-network
