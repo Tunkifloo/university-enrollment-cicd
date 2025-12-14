@@ -34,15 +34,21 @@ jobs:
       - name: Install Common Lib
         run: |
           echo "Installing Common Lib..."
-          cd Backend/common-lib  # <-- Ruta ajustada
+          cd Backend/common-lib  
           mvn clean install -DskipTests
-          cd ../..               # <-- Volvemos a la raíz
+          cd ../..                
 
       - name: SonarQube Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          JWT_SECRET: "secreto_super_seguro_para_testing_1234567890"
+          POSTGRES_USER: "test"
+          POSTGRES_PASSWORD: "test"
+          EUREKA_CLIENT_ENABLED: "false"
+          EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+          EUREKA_CLIENT_FETCH_REGISTRY: "false"
         run: |
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=university-enrollment \
