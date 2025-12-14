@@ -2,14 +2,12 @@ name: Backend CI & Quality Analysis
 
 on:
   workflow_dispatch:
-
   push:
     branches: [ "main", "master" ]
     paths:
       - 'Backend/**'
       - 'pom.xml'
       - '.github/workflows/**'
-
   pull_request:
     branches: [ "main", "master" ]
     paths:
@@ -48,15 +46,13 @@ jobs:
       - name: Run Tests (All Services)
         run: |
           echo "Ejecutando pruebas unitarias..."
-          cd Backend
-          # verify ejecuta tests unitarios y de integración
+          # Maven detectará los módulos (Backend/auth-service, etc.) gracias al pom.xml padre
           mvn clean verify -Dmaven.test.failure.ignore=false
 
       - name: SonarQube Scan
         if: success()
         run: |
           echo "Enviando análisis a SonarQube..."
-          cd Backend
           mvn sonar:sonar \
             -Dsonar.projectKey=university-enrollment-backend \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
