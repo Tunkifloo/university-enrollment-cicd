@@ -78,23 +78,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Install Common Lib
-        run: |
-          cd Backend/common-lib
-          mvn clean install -DskipTests
-
-      - name: Build Service JAR
-        run: |
-          cd Backend/${{ matrix.service }}
-          mvn clean package -DskipTests
-
       - name: Lowercase Registry Details
         run: |
           echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
@@ -119,7 +102,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./Backend/${{ matrix.service }}
+          context: .
+          file: ./Backend/${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
