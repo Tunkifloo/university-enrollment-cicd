@@ -4,6 +4,7 @@ import com.university.authservice.domain.Role;
 import com.university.authservice.domain.User;
 import com.university.authservice.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @SpringBootApplication
 @EnableDiscoveryClient
 public class AuthServiceApplication {
+
+    @Value("${app.security.admin-password}")
+    private String adminPassword;
 
     public static void main(String[] args) {
         SpringApplication.run(AuthServiceApplication.class, args);
@@ -33,7 +37,7 @@ public class AuthServiceApplication {
                 User admin = User.builder()
                         .fullName("Administrador del Sistema")
                         .email(adminEmail)
-                        .password(passwordEncoder.encode("Admin123!"))
+                        .password(passwordEncoder.encode(adminPassword))
                         .role(Role.ROLE_ADMIN)
                         .active(true)
                         .build();
@@ -44,9 +48,9 @@ public class AuthServiceApplication {
                 log.info("Usuario Admin creado exitosamente");
                 log.info("════════════════════════════════════════════════════════");
                 log.info("Email: {}", adminEmail);
-                log.info("Password: Admin123!");
+                log.info("Password: [PROTECTED]");
                 log.info("Role: {}", Role.ROLE_ADMIN);
-                log.info("IMPORTANTE: Cambiar credenciales en producción");
+                log.info("IMPORTANTE: Las credenciales han sido configuradas externamente");
                 log.info("════════════════════════════════════════════════════════");
             } else {
                 log.info("✓ Usuario admin ya existe: {}", adminEmail);
