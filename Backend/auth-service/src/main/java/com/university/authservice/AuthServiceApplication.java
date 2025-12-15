@@ -44,14 +44,11 @@ public class AuthServiceApplication {
 
                 userRepository.save(admin);
 
-                log.info("════════════════════════════════════════════════════════");
                 log.info("Usuario Admin creado exitosamente");
-                log.info("════════════════════════════════════════════════════════");
                 log.info("Email: {}", adminEmail);
                 log.info("Password: [PROTECTED]");
                 log.info("Role: {}", Role.ROLE_ADMIN);
                 log.info("IMPORTANTE: Las credenciales han sido configuradas externamente");
-                log.info("════════════════════════════════════════════════════════");
             } else {
                 log.info("✓ Usuario admin ya existe: {}", adminEmail);
             }

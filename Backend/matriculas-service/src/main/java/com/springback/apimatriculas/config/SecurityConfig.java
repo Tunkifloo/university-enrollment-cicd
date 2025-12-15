@@ -21,6 +21,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private static final String FACULTADES_PATH = "/facultades/**";
+    private static final String CARRERAS_PATH = "/carreras/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -31,9 +33,9 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Actuator y Health - públicos
-                        .requestMatchers("/actuator/**").permitAll()
+                        // Health check - público
                         .requestMatchers("/health/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
                         // Swagger/OpenAPI - públicos
                         .requestMatchers(
@@ -43,16 +45,19 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Endpoints públicos de lectura
-                        .requestMatchers(HttpMethod.GET, "/facultades/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/carreras/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, FACULTADES_PATH).permitAll()
+                        .requestMatchers(HttpMethod.GET, CARRERAS_PATH).permitAll()
 
                         // Endpoints de escritura - autenticados
-                        .requestMatchers(HttpMethod.POST, "/facultades/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/facultades/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/facultades/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/carreras/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/carreras/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/carreras/**").authenticated()
+                        // Facultades
+                        .requestMatchers(HttpMethod.POST, FACULTADES_PATH).authenticated()
+                        .requestMatchers(HttpMethod.PUT, FACULTADES_PATH).authenticated()
+                        .requestMatchers(HttpMethod.DELETE, FACULTADES_PATH).authenticated()
+
+                        // Carreras
+                        .requestMatchers(HttpMethod.POST, CARRERAS_PATH).authenticated()
+                        .requestMatchers(HttpMethod.PUT, CARRERAS_PATH).authenticated()
+                        .requestMatchers(HttpMethod.DELETE, CARRERAS_PATH).authenticated()
 
                         // Cualquier otra petición requiere autenticación
                         .anyRequest().authenticated()

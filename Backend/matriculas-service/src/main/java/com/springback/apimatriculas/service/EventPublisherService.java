@@ -17,6 +17,15 @@ import java.time.LocalDateTime;
 public class EventPublisherService {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private static final String STATUS_SUCCESS = "SUCCESS";
+    private static final String ENTITY_FACULTY = "FACULTY";
+    private static final String ENTITY_CAREER = "CAREER";
+    private static final String EVENT_FACULTY_CREATED = "FACULTY_CREATED";
+    private static final String EVENT_FACULTY_UPDATED = "FACULTY_UPDATED";
+    private static final String EVENT_FACULTY_DELETED = "FACULTY_DELETED";
+    private static final String EVENT_CAREER_CREATED = "CAREER_CREATED";
+    private static final String EVENT_CAREER_UPDATED = "CAREER_UPDATED";
+    private static final String EVENT_CAREER_DELETED = "CAREER_DELETED";
 
     @Value("${kafka.topics.audit}")
     private String auditTopic;
@@ -40,167 +49,77 @@ public class EventPublisherService {
     private String careerDeletedTopic;
 
     /**
-     * Obtiene el email del usuario autenticado desde el contexto de seguridad
+     * Obtiene el email del usuario autenticado
      */
     private String getAuthenticatedUserEmail() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return (auth != null && auth.isAuthenticated()) ? auth.getName() : "system";
     }
 
-    // ==================== EVENTOS DE FACULTAD ====================
-
-    public void publishFacultyCreatedEvent(Long facultyId, String facultyName) {
+    /**
+     * Construye y publica el evento evitando la duplicación de código.
+     */
+    private void createAndPublishEvent(String specificTopic, String eventType, String action,
+                                       String details, String entityType, Long entityId) {
         try {
             String userEmail = getAuthenticatedUserEmail();
 
             AuditEvent event = AuditEvent.builder()
-                    .eventType("FACULTY_CREATED")
+                    .eventType(eventType)
                     .userEmail(userEmail)
-                    .action("Facultad creada")
-                    .details("Nueva facultad: " + facultyName)
+                    .action(action)
+                    .details(details)
                     .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("FACULTY")
-                    .entityId(facultyId)
+                    .status(STATUS_SUCCESS)
+                    .entityType(entityType)
+                    .entityId(entityId)
                     .build();
 
-            // Publicar en el topic específico de facultades
-            kafkaTemplate.send(facultyCreatedTopic, event);
-
-            // Publicar también en el topic general de auditoría
+            // Publicar en topics
+            kafkaTemplate.send(specificTopic, event);
             kafkaTemplate.send(auditTopic, event);
 
-            log.info("Evento FACULTY_CREATED publicado para facultad: {} por usuario: {}",
-                    facultyName, userEmail);
+            log.info("Evento {} publicado. Entidad: {} ID: {} por usuario: {}",
+                    eventType, entityType, entityId, userEmail);
+
         } catch (Exception e) {
-            log.error("Error al publicar evento de facultad creada: {}", e.getMessage());
+            log.error("Error al publicar evento {}: {}", eventType, e.getMessage());
         }
+    }
+
+    // --- FACULTADES ---
+
+    public void publishFacultyCreatedEvent(Long facultyId, String facultyName) {
+        createAndPublishEvent(facultyCreatedTopic, EVENT_FACULTY_CREATED, "Facultad creada",
+                "Nueva facultad: " + facultyName, ENTITY_FACULTY, facultyId);
     }
 
     public void publishFacultyUpdatedEvent(Long facultyId, String facultyName) {
-        try {
-            String userEmail = getAuthenticatedUserEmail();
-
-            AuditEvent event = AuditEvent.builder()
-                    .eventType("FACULTY_UPDATED")
-                    .userEmail(userEmail)
-                    .action("Facultad actualizada")
-                    .details("Facultad actualizada: " + facultyName)
-                    .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("FACULTY")
-                    .entityId(facultyId)
-                    .build();
-
-            kafkaTemplate.send(facultyUpdatedTopic, event);
-            kafkaTemplate.send(auditTopic, event);
-
-            log.info("Evento FACULTY_UPDATED publicado para facultad: {} por usuario: {}",
-                    facultyName, userEmail);
-        } catch (Exception e) {
-            log.error("Error al publicar evento de facultad actualizada: {}", e.getMessage());
-        }
+        createAndPublishEvent(facultyUpdatedTopic, EVENT_FACULTY_UPDATED, "Facultad actualizada",
+                "Facultad actualizada: " + facultyName, ENTITY_FACULTY, facultyId);
     }
 
     public void publishFacultyDeletedEvent(Long facultyId, String facultyName) {
-        try {
-            String userEmail = getAuthenticatedUserEmail();
-
-            AuditEvent event = AuditEvent.builder()
-                    .eventType("FACULTY_DELETED")
-                    .userEmail(userEmail)
-                    .action("Facultad eliminada")
-                    .details("Facultad eliminada: " + facultyName)
-                    .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("FACULTY")
-                    .entityId(facultyId)
-                    .build();
-
-            kafkaTemplate.send(facultyDeletedTopic, event);
-            kafkaTemplate.send(auditTopic, event);
-
-            log.info("Evento FACULTY_DELETED publicado para facultad: {} por usuario: {}",
-                    facultyName, userEmail);
-        } catch (Exception e) {
-            log.error("Error al publicar evento de facultad eliminada: {}", e.getMessage());
-        }
+        createAndPublishEvent(facultyDeletedTopic, EVENT_FACULTY_DELETED, "Facultad eliminada",
+                "Facultad eliminada: " + facultyName, ENTITY_FACULTY, facultyId);
     }
 
-    // ==================== EVENTOS DE CARRERA ====================
+    // --- CARRERAS ---
 
     public void publishCareerCreatedEvent(Long careerId, String careerName, Long facultyId, String facultyName) {
-        try {
-            String userEmail = getAuthenticatedUserEmail();
-
-            AuditEvent event = AuditEvent.builder()
-                    .eventType("CAREER_CREATED")
-                    .userEmail(userEmail)
-                    .action("Carrera creada")
-                    .details(String.format("Nueva carrera: %s en facultad: %s", careerName, facultyName))
-                    .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("CAREER")
-                    .entityId(careerId)
-                    .build();
-
-            kafkaTemplate.send(careerCreatedTopic, event);
-            kafkaTemplate.send(auditTopic, event);
-
-            log.info("Evento CAREER_CREATED publicado para carrera: {} en facultad: {} por usuario: {}",
-                    careerName, facultyName, userEmail);
-        } catch (Exception e) {
-            log.error("Error al publicar evento de carrera creada: {}", e.getMessage());
-        }
+        String details = String.format("Nueva carrera: %s en facultad: %s", careerName, facultyName);
+        createAndPublishEvent(careerCreatedTopic, EVENT_CAREER_CREATED, "Carrera creada",
+                details, ENTITY_CAREER, careerId);
     }
 
     public void publishCareerUpdatedEvent(Long careerId, String careerName, Long facultyId, String facultyName) {
-        try {
-            String userEmail = getAuthenticatedUserEmail();
-
-            AuditEvent event = AuditEvent.builder()
-                    .eventType("CAREER_UPDATED")
-                    .userEmail(userEmail)
-                    .action("Carrera actualizada")
-                    .details(String.format("Carrera actualizada: %s en facultad: %s", careerName, facultyName))
-                    .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("CAREER")
-                    .entityId(careerId)
-                    .build();
-
-            kafkaTemplate.send(careerUpdatedTopic, event);
-            kafkaTemplate.send(auditTopic, event);
-
-            log.info("Evento CAREER_UPDATED publicado para carrera: {} en facultad: {} por usuario: {}",
-                    careerName, facultyName, userEmail);
-        } catch (Exception e) {
-            log.error("Error al publicar evento de carrera actualizada: {}", e.getMessage());
-        }
+        String details = String.format("Carrera actualizada: %s en facultad: %s", careerName, facultyName);
+        createAndPublishEvent(careerUpdatedTopic, EVENT_CAREER_UPDATED, "Carrera actualizada",
+                details, ENTITY_CAREER, careerId);
     }
 
     public void publishCareerDeletedEvent(Long careerId, String careerName) {
-        try {
-            String userEmail = getAuthenticatedUserEmail();
-
-            AuditEvent event = AuditEvent.builder()
-                    .eventType("CAREER_DELETED")
-                    .userEmail(userEmail)
-                    .action("Carrera eliminada")
-                    .details("Carrera eliminada: " + careerName)
-                    .timestamp(LocalDateTime.now())
-                    .status("SUCCESS")
-                    .entityType("CAREER")
-                    .entityId(careerId)
-                    .build();
-
-            kafkaTemplate.send(careerDeletedTopic, event);
-            kafkaTemplate.send(auditTopic, event);
-
-            log.info("Evento CAREER_DELETED publicado para carrera: {} por usuario: {}",
-                    careerName, userEmail);
-        } catch (Exception e) {
-            log.error("Error al publicar evento de carrera eliminada: {}", e.getMessage());
-        }
+        createAndPublishEvent(careerDeletedTopic, EVENT_CAREER_DELETED, "Carrera eliminada",
+                "Carrera eliminada: " + careerName, ENTITY_CAREER, careerId);
     }
 }

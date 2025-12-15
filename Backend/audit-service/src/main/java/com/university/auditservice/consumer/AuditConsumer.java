@@ -16,10 +16,11 @@ import org.springframework.stereotype.Component;
 public class AuditConsumer {
 
     private final AuditService auditService;
+    private static final String CONSUMER_GROUP_ID = "${spring.kafka.consumer.group-id}";
 
     @KafkaListener(
             topics = "${kafka.topics.audit}",
-            groupId = "${spring.kafka.consumer.group-id}"
+            groupId = CONSUMER_GROUP_ID
     )
     public void consumeAuditEvent(
             @Payload AuditEvent event,
@@ -28,17 +29,12 @@ public class AuditConsumer {
             @Header(KafkaHeaders.OFFSET) long offset) {
 
         try {
-            log.info("═══════════════════════════════════════════════════");
             log.info("EVENTO RECIBIDO DE KAFKA");
-            log.info("═══════════════════════════════════════════════════");
-            log.info("🔥 Topic: {}", topic);
-            log.info("📂 Partition: {}", partition);
-            log.info("📍 Offset: {}", offset);
-            log.info("📋 Event Type: {}", event.getEventType());
-            log.info("👤 User: {} ({})", event.getUserEmail(), event.getUserId());
+            log.info("Topic: {}", topic);
+            log.info("Partition: {}", partition);
+            log.info("Offset: {}", offset);
             log.info("⚡ Action: {}", event.getAction());
-            log.info("📝 Details: {}", event.getDetails());
-            log.info("═══════════════════════════════════════════════════");
+            log.info("Details: {}", event.getDetails());
 
             auditService.logEvent(event);
 
@@ -46,13 +42,13 @@ public class AuditConsumer {
 
         } catch (Exception e) {
             log.error("Error al procesar evento de auditoría: {}", e.getMessage(), e);
-            throw e; // Re-lanzar para que Kafka reintente
+            throw e;
         }
     }
 
     @KafkaListener(
             topics = "${kafka.topics.user-registered}",
-            groupId = "${spring.kafka.consumer.group-id}"
+            groupId = CONSUMER_GROUP_ID
     )
     public void consumeUserRegisteredEvent(@Payload AuditEvent event) {
         try {
@@ -66,7 +62,7 @@ public class AuditConsumer {
 
     @KafkaListener(
             topics = "${kafka.topics.faculty-created}",
-            groupId = "${spring.kafka.consumer.group-id}"
+            groupId = CONSUMER_GROUP_ID
     )
     public void consumeFacultyCreatedEvent(@Payload AuditEvent event) {
         try {
@@ -74,6 +70,76 @@ public class AuditConsumer {
             auditService.logEvent(event);
         } catch (Exception e) {
             log.error("Error procesando creación de facultad: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(
+            topics = "${kafka.topics.faculty-updated}",
+            groupId = CONSUMER_GROUP_ID
+    )
+    public void consumeFacultyUpdatedEvent(@Payload AuditEvent event) {
+        try {
+            log.info("Facultad actualizada: {}", event.getDetails());
+            auditService.logEvent(event);
+        } catch (Exception e) {
+            log.error("Error procesando actualización de facultad: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(
+            topics = "${kafka.topics.faculty-deleted}",
+            groupId = CONSUMER_GROUP_ID
+    )
+    public void consumeFacultyDeletedEvent(@Payload AuditEvent event) {
+        try {
+            log.info("Facultad eliminada: {}", event.getDetails());
+            auditService.logEvent(event);
+        } catch (Exception e) {
+            log.error("Error procesando eliminación de facultad: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(
+            topics = "${kafka.topics.career-created}",
+            groupId = CONSUMER_GROUP_ID
+    )
+    public void consumeCareerCreatedEvent(@Payload AuditEvent event) {
+        try {
+            log.info("Carrera creada: {}", event.getDetails());
+            auditService.logEvent(event);
+        } catch (Exception e) {
+            log.error("Error procesando creación de carrera: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(
+            topics = "${kafka.topics.career-updated}",
+            groupId = CONSUMER_GROUP_ID
+    )
+    public void consumeCareerUpdatedEvent(@Payload AuditEvent event) {
+        try {
+            log.info("Carrera actualizada: {}", event.getDetails());
+            auditService.logEvent(event);
+        } catch (Exception e) {
+            log.error("Error procesando actualización de carrera: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(
+            topics = "${kafka.topics.career-deleted}",
+            groupId = CONSUMER_GROUP_ID
+    )
+    public void consumeCareerDeletedEvent(@Payload AuditEvent event) {
+        try {
+            log.info("Carrera eliminada: {}", event.getDetails());
+            auditService.logEvent(event);
+        } catch (Exception e) {
+            log.error("Error procesando eliminación de carrera: {}", e.getMessage(), e);
             throw e;
         }
     }
