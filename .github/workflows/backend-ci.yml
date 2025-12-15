@@ -16,7 +16,7 @@ on:
 jobs:
   build-and-test:
     name: Build, Test & Sonar
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     env:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -61,7 +61,7 @@ jobs:
 
   publish-images:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: read
