@@ -1,0 +1,239 @@
+name: Backend CD (Deploy with Approval)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: self-hosted
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Load Configuration from Server
+        run: |
+          echo "Copiando configuraciones desde ~/config..."
+          # Copiamos los archivos al directorio actual de trabajo
+          cp /home/ubuntu/config/.env .
+          cp /home/ubuntu/config/ngrok.yml .
+          
+          # Verificamos permisos (opcional pero recomendado)
+          chmod 600 .env ngrok.yml
+          ls -la .env ngrok.yml
+
+      - name: Set Variables
+        run: |
+          echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "DEPLOY_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Infrastructure Running
+        run: |
+          echo "🔍 Verificando infraestructura permanente..."
+          
+          required=(
+            "university-system-postgres-auth"
+            "university-system-postgres-audit"
+            "university-system-postgres-matriculas"
+            "university-system-zookeeper"
+            "university-system-kafka"
+            "university-system-rabbitmq"
+            "university-system-sonarqube"
+            "university-system-ngrok"
+          )
+          
+          missing=0
+          for container in "${required[@]}"; do
+            if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+              echo "$container"
+            else
+              echo "FALTA: $container"
+              missing=1
+            fi
+          done
+          
+          if [ $missing -eq 1 ]; then
+            echo ""
+            echo "INFRAESTRUCTURA INCOMPLETA"
+            echo ""
+            echo "Ejecuta el setup de infraestructura primero:"
+            echo "cd /home/ubuntu/actions-runner/_work/university-enrollment-cicd/university-enrollment-cicd"
+            echo "./setup-infrastructure.sh"
+            exit 1
+          fi
+          
+          echo ""
+          echo "Toda la infraestructura está corriendo"
+
+      - name: Pull Latest Images
+        run: |
+          echo "Descargando imágenes desde GHCR..."
+          
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-eureka-server:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-api-gateway:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-auth-service:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-audit-service:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-matriculas-service:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-email-service:latest
+          docker pull ghcr.io/${{ env.IMAGE_REPO }}-frontend:latest
+          
+          echo "Imágenes descargadas"
+
+      - name: Stop Old Application Services
+        run: |
+          echo "Deteniendo servicios antiguos..."
+          
+          docker-compose stop eureka-server api-gateway auth-service audit-service matriculas-service email-service frontend 2>/dev/null || true
+          docker-compose rm -f eureka-server api-gateway auth-service audit-service matriculas-service email-service frontend 2>/dev/null || true
+          
+          echo "Servicios antiguos detenidos"
+
+      - name: Start Eureka Server
+        run: |
+          echo "Iniciando Eureka Server..."
+          docker-compose up -d eureka-server
+          
+          echo "Esperando Eureka (30s)..."
+          sleep 30
+
+      - name: Verify Eureka Health
+        run: |
+          echo "Verificando Eureka..."
+          
+          for i in {1..20}; do
+            if curl -sf http://localhost:8761/actuator/health > /dev/null; then
+              echo "Eureka OK"
+              exit 0
+            fi
+            echo "Intento $i/20..."
+            sleep 3
+          done
+          
+          echo "Eureka no respondió"
+          docker-compose logs --tail=50 eureka-server
+          exit 1
+
+      - name: Start API Gateway
+        run: |
+          echo "Iniciando API Gateway..."
+          docker-compose up -d api-gateway
+          
+          echo "Esperando Gateway (20s)..."
+          sleep 20
+
+      - name: Verify Gateway Health
+        run: |
+          echo "Verificando API Gateway..."
+          
+          for i in {1..20}; do
+            if curl -sf http://localhost:8080/actuator/health > /dev/null; then
+              echo "Gateway OK"
+              exit 0
+            fi
+            echo "Intento $i/20..."
+            sleep 3
+          done
+          
+          echo "Gateway no respondió"
+          docker-compose logs --tail=50 api-gateway
+          exit 1
+
+      - name: Start Microservices
+        run: |
+          echo "Iniciando microservicios..."
+          docker-compose up -d auth-service audit-service matriculas-service email-service
+          
+          echo "Esperando microservicios (40s)..."
+          sleep 40
+
+      - name: Verify Matriculas Health
+        run: |
+          echo "Verificando Matriculas Service..."
+          
+          for i in {1..25}; do
+            if curl -sf http://localhost:8085/actuator/health > /dev/null; then
+              echo "Matriculas OK"
+              exit 0
+            fi
+            echo "Intento $i/25..."
+            sleep 3
+          done
+          
+          echo "Matriculas no respondió"
+          docker-compose logs --tail=100 matriculas-service
+          exit 1
+
+      - name: Start Frontend
+        run: |
+          echo "Iniciando Frontend..."
+          docker-compose up -d frontend
+          
+          echo "Esperando frontend (15s)..."
+          sleep 15
+
+      - name: Verify Frontend
+        run: |
+          echo "Verificando Frontend..."
+          
+          if curl -sf http://localhost:5173 > /dev/null; then
+            echo "Frontend OK"
+          else
+            echo "Frontend no respondió"
+          fi
+
+      - name: Deployment Summary
+        run: |
+          PUBLIC_IP=$(curl -s ifconfig.me || echo "localhost")
+          
+          echo ""
+          echo "DESPLIEGUE COMPLETADO"
+          echo ""
+          echo "Hora: ${{ env.DEPLOY_TIME }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Deployado por: ${{ github.actor }}"
+          echo "Commit: ${GITHUB_SHA:0:7}"
+          echo ""
+          echo "URLs de acceso:"
+          echo "   Frontend:    http://$PUBLIC_IP:5173"
+          echo "   API Gateway: http://$PUBLIC_IP:8080"
+          echo "   Eureka:      http://$PUBLIC_IP:8761"
+          echo "   SonarQube:   https://presumably-legible-terrier.ngrok-free.app"
+          echo ""
+          echo "Servicios desplegados:"
+          docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "eureka|gateway|auth|audit|matriculas|email|frontend"
+          echo ""
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo ""
+          echo "DESPLIEGUE FALLIDO - ROLLBACK"
+          echo ""
+          
+          docker-compose down eureka-server api-gateway auth-service audit-service matriculas-service email-service frontend || true
+          
+          echo ""
+          echo "Logs de servicios:"
+          docker-compose logs --tail=200 eureka-server api-gateway auth-service audit-service matriculas-service email-service frontend
+          
+          echo ""
+          echo "ACCIÓN REQUERIDA: Revisa los logs y corrige el problema"
+          exit 1
