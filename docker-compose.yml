@@ -409,3 +409,24 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
     networks:
       - university-network
+
+  # ==================== NGROK (Para SonarQube) ====================
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: university-system-ngrok
+    restart: unless-stopped
+    depends_on:
+      - sonarqube
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    ports:
+      - "4040:4040"  # Dashboard de ngrok
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml:ro
+    networks:
+      - university-network

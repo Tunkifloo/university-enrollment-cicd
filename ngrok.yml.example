@@ -1,0 +1,9 @@
+version: 2
+tunnels:
+  sonarqube:
+    addr: http://university-system-sonarqube:9000
+    proto: http
+    schemes:
+      - https
+      - http
+    domain: your-domain-here.ngrok-free.app  # Reemplaza con tu dominio de ngrok

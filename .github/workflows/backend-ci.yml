@@ -50,12 +50,15 @@ jobs:
 
       - name: SonarQube Scan
         if: success()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           echo "Enviando análisis a SonarQube..."
           mvn sonar:sonar \
             -Dsonar.projectKey=university-enrollment-backend \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.qualitygate.wait=true
 
   publish-images:
