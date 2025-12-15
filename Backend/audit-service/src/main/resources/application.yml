@@ -62,6 +62,11 @@ kafka:
     audit: ${KAFKA_AUDIT_TOPIC:audit.events}
     user-registered: ${KAFKA_USER_REGISTERED_TOPIC:user.registered}
     faculty-created: ${KAFKA_FACULTY_CREATED_TOPIC:faculty.created}
+    faculty-updated: ${KAFKA_FACULTY_UPDATED_TOPIC:faculty.updated}
+    faculty-deleted: ${KAFKA_FACULTY_DELETED_TOPIC:faculty.deleted}
+    career-created: ${KAFKA_CAREER_CREATED_TOPIC:career.created}
+    career-updated: ${KAFKA_CAREER_UPDATED_TOPIC:career.updated}
+    career-deleted: ${KAFKA_CAREER_DELETED_TOPIC:career.deleted}
 
 # ACTUATOR
 management:

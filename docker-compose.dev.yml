@@ -1,0 +1,395 @@
+networks:
+  university-network:
+    driver: bridge
+    name: university-system-network
+
+volumes:
+  postgres_auth_data:
+  postgres_audit_data:
+  postgres_matriculas_data:
+  rabbitmq_data:
+  kafka_data:
+  zookeeper_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+
+services:
+  # ==================== BASES DE DATOS ====================
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: university-system-postgres-auth
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_AUTH_PORT}:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUTH_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-audit:
+    image: postgres:16-alpine
+    container_name: university-system-postgres-audit
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUDIT_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_AUDIT_PORT}:5432"
+    volumes:
+      - postgres_audit_data:/var/lib/postgresql/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUDIT_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres-matriculas:
+    image: postgres:16-alpine
+    container_name: university-system-postgres-matriculas
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MATRICULAS_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_MATRICULAS_PORT}:5432"
+    volumes:
+      - postgres_matriculas_data:/var/lib/postgresql/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${MATRICULAS_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==================== MENSAJERÍA ====================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.1
+    container_name: university-system-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "${ZOOKEEPER_PORT}:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  kafka:
+    image: confluentinc/cp-kafka:7.9.1
+    container_name: university-system-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
+      KAFKA_LISTENERS: ${KAFKA_LISTENERS}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+    ports:
+      - "${KAFKA_PORT}:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:29092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: university-system-kafka-ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: university-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "${KAFKA_UI_PORT}:8080"
+    networks:
+      - university-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: university-system-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - university-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== DISCOVERY & ROUTING ====================
+  eureka-server:
+    build:
+      context: .
+      dockerfile: Backend/eureka-server/Dockerfile
+    image: university-system/eureka-server:latest
+    container_name: university-system-eureka-server
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=${EUREKA_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+    ports:
+      - "${EUREKA_PORT}:8761"
+    networks:
+      - university-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Backend/api-gateway/Dockerfile
+    image: university-system/api-gateway:latest
+    container_name: university-system-api-gateway
+    restart: unless-stopped
+    depends_on:
+      - eureka-server
+    environment:
+      - SERVER_PORT=${GATEWAY_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=${JWT_SECRET}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_WEB=${LOGGING_LEVEL_WEB}
+    ports:
+      - "${GATEWAY_PORT}:8080"
+    networks:
+      - university-network
+
+  # ==================== MICROSERVICIOS ====================
+  auth-service:
+    build:
+      context: .
+      dockerfile: Backend/auth-service/Dockerfile
+    image: university-system/auth-service:latest
+    container_name: university-system-auth-service
+    restart: unless-stopped
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      - SERVER_PORT=${AUTH_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/${AUTH_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_USER_REGISTERED=${KAFKA_USER_REGISTERED_TOPIC}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
+      - APP_SECURITY_ADMIN_PASSWORD=${APP_SECURITY_ADMIN_PASSWORD}
+    ports:
+      - "${AUTH_SERVICE_PORT}:8082"
+    networks:
+      - university-network
+
+  email-service:
+    build:
+      context: .
+      dockerfile: Backend/email-service/Dockerfile
+    image: university-system/email-service:latest
+    container_name: university-system-email-service
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      - SERVER_PORT=${EMAIL_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_QUEUE_EMAIL=${RABBITMQ_EMAIL_QUEUE}
+      - SPRING_MAIL_HOST=${SPRING_MAIL_HOST}
+      - SPRING_MAIL_PORT=${SPRING_MAIL_PORT}
+      - SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+      - SMTP_FROM=${SMTP_FROM}
+      - EMAIL_ENABLED=${EMAIL_ENABLED}
+      - EMAIL_SIMULATION_MODE=${EMAIL_SIMULATION_MODE}
+      - APP_NOTIFICATION_ADMIN_EMAIL=${APP_NOTIFICATION_ADMIN_EMAIL}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_RABBITMQ=${LOGGING_LEVEL_RABBITMQ}
+    ports:
+      - "${EMAIL_SERVICE_PORT}:8083"
+    networks:
+      - university-network
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: Backend/audit-service/Dockerfile
+    image: university-system/audit-service:latest
+    container_name: university-system-audit-service
+    restart: unless-stopped
+    depends_on:
+      postgres-audit:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      - SERVER_PORT=${AUDIT_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-audit:5432/${AUDIT_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_AUDIT=${KAFKA_AUDIT_TOPIC}
+      - KAFKA_CONSUMER_GROUP=${KAFKA_AUDIT_CONSUMER_GROUP}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
+      - LOGGING_LEVEL_KAFKA=${LOGGING_LEVEL_KAFKA}
+    ports:
+      - "${AUDIT_SERVICE_PORT}:8084"
+    networks:
+      - university-network
+
+  matriculas-service:
+    build:
+      context: .
+      dockerfile: Backend/matriculas-service/Dockerfile
+    image: university-system/matriculas-service:latest
+    container_name: university-system-matriculas-service
+    restart: unless-stopped
+    depends_on:
+      postgres-matriculas:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    environment:
+      - SERVER_PORT=${MATRICULAS_SERVICE_PORT}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SERVER_SERVLET_CONTEXT_PATH=
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-matriculas:5432/${MATRICULAS_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - SPRING_JPA_SHOW_SQL=${SPRING_JPA_SHOW_SQL}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_DEFAULT_USER}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_DEFAULT_PASS}
+      - JWT_SECRET=${JWT_SECRET}
+      - KAFKA_AUDIT_TOPIC=${KAFKA_AUDIT_TOPIC}
+      - KAFKA_FACULTY_CREATED_TOPIC=${KAFKA_FACULTY_CREATED_TOPIC}
+      - KAFKA_FACULTY_UPDATED_TOPIC=${KAFKA_FACULTY_UPDATED_TOPIC}
+      - KAFKA_FACULTY_DELETED_TOPIC=${KAFKA_FACULTY_DELETED_TOPIC}
+      - KAFKA_CAREER_CREATED_TOPIC=${KAFKA_CAREER_CREATED_TOPIC}
+      - KAFKA_CAREER_UPDATED_TOPIC=${KAFKA_CAREER_UPDATED_TOPIC}
+      - KAFKA_CAREER_DELETED_TOPIC=${KAFKA_CAREER_DELETED_TOPIC}
+      - RABBITMQ_EMAIL_EXCHANGE=${RABBITMQ_EMAIL_EXCHANGE}
+      - RABBITMQ_EMAIL_ROUTING_KEY=${RABBITMQ_EMAIL_ROUTING_KEY}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_APP=${LOGGING_LEVEL_APP}
+      - LOGGING_LEVEL_SQL=${LOGGING_LEVEL_SQL}
+      - LOGGING_LEVEL_KAFKA=${LOGGING_LEVEL_KAFKA}
+    ports:
+      - "${MATRICULAS_SERVICE_PORT}:8085"
+    networks:
+      - university-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8085/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==================== FRONTEND ====================
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    container_name: matriculas-frontend
+    restart: unless-stopped
+    ports:
+      - "${VITE_DEV_PORT}:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    networks:
+      - university-network
